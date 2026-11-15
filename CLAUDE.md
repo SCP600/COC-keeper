@@ -10,6 +10,7 @@
 - 新增標記要同時改 `RULES`、`handleReply`、`TAGNAMES` 和 `SPEC.md` 的標記表。
 - 改到存檔或調查員的資料結構時，在 `migrate()` 補上舊資料的轉換。
 - 換模型或調整外部模型的主持表現時，照 `coc-keeper-model-port` skill 的流程，先量再改。
+- 新增劇本時照 `coc-scenario-writer` skill 的流程。寫作過程不要在對話裡顯示劇本的真相。
 - `src/bible.md` 和 `src/bible2.md` 有完整劇透。使用者可能想自己玩，回報時不要引用其中的真相。
 - 發布順序：推送到 `main`，再把同一個 `index.html` 發布到 Claude 頁面。Claude 頁面是公開狀態時先問使用者。
 - 回報時把「驗證過的」和「沒驗證的」分開寫。主持品質、聲音、真實裝置上的動畫，在開發環境裡都驗證不了。
