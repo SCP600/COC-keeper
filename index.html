@@ -113,6 +113,23 @@ button{cursor:pointer}
 .bar{display:flex;align-items:center;gap:16px;padding:10px 20px;border-bottom:1px solid var(--line);font-family:var(--sans);font-size:13.5px}
 .bar strong{font-family:var(--serif);font-weight:900;font-size:17px;letter-spacing:.08em}
 .bar .time{color:var(--lamp);font-variant-numeric:tabular-nums}
+.brief{position:relative}
+.briefbtn{display:inline-flex;align-items:center;gap:7px;background:none;border:0;padding:2px 0;color:var(--paper);cursor:help}
+.briefbtn svg{width:15px;height:15px;color:var(--dim);transition:color .15s}
+.briefbtn:hover svg,.brief.open .briefbtn svg,.briefbtn:focus-visible svg{color:var(--lamp)}
+.briefcard{position:absolute;top:calc(100% + 12px);left:-8px;z-index:4;width:min(420px,calc(100vw - 32px));background:var(--deep);border:1px solid var(--line);border-top:2px solid var(--lamp);padding:16px 20px 18px;box-shadow:0 14px 40px rgba(0,0,0,.55);
+  opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity .16s,transform .16s,visibility 0s .16s;font-family:var(--sans)}
+.briefcard::before{content:"";position:absolute;left:18px;top:-7px;width:11px;height:11px;background:var(--lamp);transform:rotate(45deg);clip-path:polygon(0 0,100% 0,0 100%)}
+.brief.open .briefcard{opacity:1;visibility:visible;transform:none;transition:opacity .16s,transform .16s}
+@media (hover:hover) and (pointer:fine){.brief:hover .briefcard,.brief:focus-within .briefcard{opacity:1;visibility:visible;transform:none;transition:opacity .16s .12s,transform .16s .12s}}
+.briefcard small{display:block;color:var(--lamp);font-size:11.5px;letter-spacing:.18em}
+.briefcard h3{font-family:var(--serif);font-weight:900;font-size:21px;letter-spacing:.06em;margin:2px 0 10px;color:var(--paper)}
+.briefcard h3 span{color:var(--lamp)}
+.briefcard .meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;font-size:12px}
+.briefcard p{font-family:var(--serif);font-size:15px;line-height:1.85;color:var(--paper);margin:0}
+.briefcard .due{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);font-size:12.5px;color:var(--dim)}
+.briefcard .due b{color:var(--lamp);font-weight:500}
+@media (prefers-reduced-motion:reduce){.briefcard,.brief.open .briefcard{transition:none;transform:none}}
 .bar .sp{flex:1}
 @media (max-width:620px){#btnQuit{display:none}.bar .homebtn{padding:4px 8px}.bar{gap:6px}}
 .tabs{display:none;gap:4px}
@@ -280,8 +297,12 @@ details summary{cursor:pointer;color:var(--dim);margin-top:6px}
   .shelf{grid-template-columns:1fr}
   .side{border-left:0}
   .bar{padding:8px 16px;gap:10px}
-  .bar strong{display:none}
+  .brief{min-width:0;flex-shrink:1}
+  .briefbtn{max-width:100%}
+  .briefbtn strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 }
+/* 窄螢幕的遊戲列：放在最後，蓋過前面同權重的規則 */
+@media (max-width:620px){.bar{position:relative;padding:10px 12px}.bar .lbl{display:none}.bar .homebtn{padding:5px 7px}.brief{position:static;min-width:0;flex-shrink:1}.bar .time{white-space:nowrap;font-size:12.5px}.tabs button{white-space:nowrap;padding:3px 7px}.briefbtn svg{display:none}.briefbtn strong{letter-spacing:.02em;text-decoration:underline dotted var(--dim);text-underline-offset:5px}.briefcard{left:12px;right:12px;width:auto;top:calc(100% + 6px)}.briefcard::before{display:none}.briefbtn strong{font-size:15px}}
 </style>
 </head>
 <body>
@@ -358,12 +379,15 @@ details summary{cursor:pointer;color:var(--dim);margin-top:6px}
 
 <section id="game" class="screen hidden">
   <div class="bar">
-    <button class="homebtn" id="btnHome" title="回到案件檔案櫃，進度會保留"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7M5.5 9.5V20h13V9.5M10 20v-6h4v6"/></svg>檔案櫃</button>
-    <strong id="barTitle"></strong>
+    <button class="homebtn" id="btnHome" title="回到案件檔案櫃，進度會保留"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7M5.5 9.5V20h13V9.5M10 20v-6h4v6"/></svg><span class="lbl">檔案櫃</span></button>
+    <div class="brief" id="brief">
+      <button type="button" class="briefbtn" id="briefBtn" aria-expanded="false" aria-controls="briefCard" title="劇本簡介"><strong id="barTitle"></strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></button>
+      <div class="briefcard" id="briefCard" role="tooltip"></div>
+    </div>
     <span class="time" id="clock"></span>
     <span class="sp"></span>
     <div class="tabs"><button id="tabStory" aria-pressed="true">故事</button><button id="tabSheet" aria-pressed="false">調查員</button></div>
-    <button class="homebtn" id="btnSet" title="引導模式、音效與動畫"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></svg>設定</button>
+    <button class="homebtn" id="btnSet" title="引導模式、音效與動畫"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></svg><span class="lbl">設定</span></button>
         <button class="linkbtn" id="btnQuit">放棄並重來</button>
   </div>
   <div class="cols" id="cols" data-tab="story">
@@ -889,8 +913,16 @@ function useScenario(id){
   SC=SCENARIOS.find(s=>s.id===id)||SCENARIOS[0];
   if(!SC.text)SC.text=dec(SC.bible);
   BIBLE=SC.text;BASE={...BASE0,...SC.extra};OCCS=SC.occs;
-  $("#barTitle").textContent=SC.title.join("");$("#makeTitle").textContent="建立調查員 · "+SC.title.join("");
+  $("#barTitle").textContent=SC.title.join("");drawBrief();$("#makeTitle").textContent="建立調查員 · "+SC.title.join("");
 }
+// 遊戲畫面上方劇本名稱的簡介卡：只放檔案櫃上本來就公開的文字
+function drawBrief(){
+  $("#briefCard").innerHTML=`<small>${SC.no}</small><h3>${SC.title[0]}<span>${SC.title[1]}</span></h3>
+  <div class="meta"><span>${SC.era}</span><span>${SC.kind}</span><span>${SC.pace}</span><span>${SC.len}</span></div>
+  <p>${SC.hook}</p><div class="due">期限　<b>${esc(SC.deadline)}</b></div>`;
+  closeBrief();
+}
+function closeBrief(){$("#brief").classList.remove("open");$("#briefBtn").setAttribute("aria-expanded","false")}
 const TIERS=[70,60,60,50,50,50,40,40];
 const ATTRS=[["STR","力量",3,0],["CON","體質",3,0],["SIZ","體型",2,6],["DEX","敏捷",3,0],["APP","外貌",3,0],["INT","智力",2,6],["POW","意志",3,0],["EDU","教育",2,6]];
 const ATTR_ALIAS={"力量":"STR","體質":"CON","體型":"SIZ","敏捷":"DEX","外貌":"APP","智力":"INT","靈感":"INT","意志":"POW","教育":"EDU","知識":"EDU"};
@@ -1538,6 +1570,9 @@ $("#noteNext").onclick=()=>{noteIdx++;drawNote(1)};
 $("#noteClose").onclick=closeNotes;
 $("#noteDots").onclick=e=>{const b=e.target.closest("[data-i]");if(b){const i=+b.dataset.i,d=i>noteIdx?1:-1;noteIdx=i;drawNote(d)}};
 $("#notes").onclick=e=>{if(e.target.id==="notes")closeNotes()};
+$("#briefBtn").onclick=e=>{e.stopPropagation();const o=!$("#brief").classList.contains("open");$("#brief").classList.toggle("open",o);$("#briefBtn").setAttribute("aria-expanded",String(o))};
+document.addEventListener("click",e=>{if(!e.target.closest("#brief"))closeBrief()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeBrief()});
 document.addEventListener("keydown",e=>{if($("#notes").classList.contains("hidden"))return;
   if(e.key==="Escape")closeNotes();else if(e.key==="ArrowLeft"&&noteIdx>0){noteIdx--;drawNote(-1)}else if(e.key==="ArrowRight"&&S&&noteIdx<Object.keys(S.clues).length-1){noteIdx++;drawNote(1)}});
 let llmMsg="",llmModels=[];
