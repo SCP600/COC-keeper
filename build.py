@@ -5,7 +5,7 @@
 import base64, pathlib
 root = pathlib.Path(__file__).parent
 html = (root / "src" / "template.html").read_text(encoding="utf-8")
-for mark, name in (("__BIBLE1__", "bible.md"), ("__BIBLE2__", "bible2.md")):
+for mark, name in (("__BIBLE1__", "bible.md"), ("__BIBLE2__", "bible2.md"), ("__BIBLE3__", "bible3.md")):
     assert html.count(mark) == 1, f"template.html 裡找不到唯一的 {mark}"
     html = html.replace(mark, base64.b64encode((root / "src" / name).read_bytes()).decode())
 (root / "index.html").write_text(html, encoding="utf-8")

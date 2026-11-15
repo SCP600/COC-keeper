@@ -673,7 +673,9 @@ const Snd=(()=>{
     whistle:()=>{const t=T(),o=ctx.createOscillator(),v=ctx.createOscillator(),vg=gain(130),g=gain(0);o.frequency.value=2750;v.frequency.value=31;v.connect(vg);vg.connect(o.frequency);
       g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.1,t+.03);g.gain.setValueAtTime(.1,t+.75);g.gain.linearRampToValueAtTime(0,t+.95);
       o.connect(g);g.connect(fxBus);o.start(t);v.start(t);o.stop(t+1);v.stop(t+1);burst({ft:"highpass",f:4000,dur:.9,vol:.02})},
-    scrape:()=>{burst({f:420,f1:950,q:2.5,dur:1.3,vol:.28,att:.1});burst({kind:"brown",ft:"lowpass",f:200,dur:1.2,vol:.3,att:.1})}
+    scrape:()=>{burst({f:420,f1:950,q:2.5,dur:1.3,vol:.28,att:.1});burst({kind:"brown",ft:"lowpass",f:200,dur:1.2,vol:.3,att:.1})},
+    rustle:()=>{burst({ft:"highpass",f:3200,dur:2.6,vol:.05,att:.5});
+      for(let i=0;i<70;i++){const at=.1+Math.random()*2.3,env=Math.sin(Math.PI*at/2.5);burst({f:2600+Math.random()*3800,q:5,dur:.02+Math.random()*.03,vol:(.05+Math.random()*.11)*env,at,att:.002})}}
   };
   FX.train=()=>{burst({kind:"brown",ft:"lowpass",f:130,dur:5,vol:.9,att:2.2});
     let at=.5,gap=.26;for(let i=0;i<11;i++){burst({ft:"lowpass",f:700,dur:.05,vol:.22+i*.01,at});burst({ft:"lowpass",f:700,dur:.05,vol:.18,at:at+.09});gap*=1.16;at+=gap}
@@ -726,7 +728,7 @@ const Snd=(()=>{
     if(stress>.8&&!hbT){const beat=()=>{hbT=0;if(stress<=.8)return;if(prefs.on&&!document.hidden&&ctx.state==="running")heart((stress-.6)*.45,stBus);hbT=setTimeout(beat,1200-stress*300)};hbT=setTimeout(beat,600)}
   }
   const AMBS={quiet:"室內的安靜",town:"白天的街道",sea:"海邊與浪聲",rain:"下雨",wind:"風大的戶外",cellar:"地下室、隧道口這類潮濕封閉的地方",night:"夜晚的山區或郊外",train:"行駛中的列車車廂內",cafe:"咖啡店或有人聲的室內",none:"完全無聲"};
-  const FXS={knock:"敲門或敲擊",door:"老門軸轉動",steps:"腳步聲",bell:"鐘或鈴響一聲",glass:"玻璃碎裂",horn:"遠處的汽笛",thud:"重物落地或撞擊",drip:"一滴水",tick:"鐘錶走動",whisper:"聽不清的低語",heart:"心跳",slap:"水或濕的東西拍在牆上",train:"列車進站",static:"電子雜訊或訊號中斷",whistle:"哨子聲",scrape:"拖動或刮擦"};
+  const FXS={knock:"敲門或敲擊",door:"老門軸轉動",steps:"腳步聲",bell:"鐘或鈴響一聲",glass:"玻璃碎裂",horn:"遠處的汽笛",thud:"重物落地或撞擊",drip:"一滴水",tick:"鐘錶走動",whisper:"聽不清的低語",heart:"心跳",slap:"水或濕的東西拍在牆上",train:"列車進站",static:"電子雜訊或訊號中斷",whistle:"哨子聲",scrape:"拖動或刮擦",rustle:"一整片細密的沙沙聲（啃食、紙頁、枯葉）"};
   return {
     prefs,AMBS,FXS,amb,stress:setStress,
     unlock(){if(init()&&prefs.on&&ctx.state==="suspended")ctx.resume()},
@@ -857,6 +859,14 @@ const OCCS_MODERN=[
  {id:"vt",name:"退役軍人",cr:15,blurb:"退伍後在大樓當夜班保全，習慣醒著。",skills:["格鬥（鬥毆）","閃避","潛行","急救","聆聽","攀爬","恐嚇","跳躍"],items:["智慧型手機","伸縮警棍（傷害 1d6+DB）","強光手電筒","打火機"]},
  {id:"gs",name:"民俗學研究生",cr:15,blurb:"論文題目是礦村的夜間禁忌，田野地就在東北角。",skills:["圖書館使用","歷史","神秘學","人類學","心理學","說服","外語","電腦使用"],items:["智慧型手機","錄音筆","筆記本","手電筒"]}
 ];
+const OCCS_TAISHO=[
+ {id:"tt",name:"私立探偵",cr:25,blurb:"在東京開一間小事務所，接的多半是尋人和身家調查。",skills:["偵查","心理學","潛行","話術","鎖匠","法律","聆聽","格鬥（鬥毆）"],items:["懷中電燈","手帖與鉛筆","開鎖工具","紙菸與火柴"]},
+ {id:"kj",name:"報社記者",cr:20,blurb:"替東京的報紙跑社會新聞，什麼地方都敢去。",skills:["圖書館使用","說服","話術","心理學","偵查","聆聽","攝影","歷史"],items:["摺疊相機","記者證","手帖與鉛筆","紙菸與火柴"]},
+ {id:"is",name:"開業醫",cr:50,blurb:"在町裡開診所，念書時學的是德國醫學。",skills:["醫學","急救","心理學","科學","說服","圖書館使用","偵查","外語"],items:["往診包（醫療器材與藥品）","懷錶","懷中電燈","名片"]},
+ {id:"gk",name:"民俗學者",cr:40,blurb:"在大學講課，一放假就往山村跑，蒐集沒人寫下來的規矩。",skills:["圖書館使用","歷史","神秘學","人類學","外語","說服","心理學","自然學"],items:["手帖與鋼筆","懷中電燈","放大鏡","蠟燭與火柴"]},
+ {id:"gj",name:"退役軍人",cr:15,blurb:"從西伯利亞回來兩年了，還是習慣背靠著牆坐。",skills:["格鬥（鬥毆）","射擊（步槍／霰彈槍）","閃避","潛行","急救","聆聽","攀爬","生存"],items:["短刀（傷害 1d4+2+DB）","繃帶","麻繩","紙菸與火柴"]},
+ {id:"kt",name:"生絲商行外勤",cr:35,blurb:"替橫濱的商行下鄉收繭，摸一把就知道絲的成色。",skills:["估價","會計","說服","話術","心理學","自然學","偵查","導航"],items:["算盤與帳冊","懷中電燈","名片","絲剪"]}
+];
 const SCENARIOS=[
  {id:"ebb9",eraKey:"1920",no:"檔案 01",title:["退潮街","九號"],era:"1924 年 · 美國新英格蘭",kind:"凶宅調查",pace:"三天期限",len:"60–90 分鐘",
   hook:"房東說，那棟屋子只是「有點潮」。上一戶房客的丈夫半夜拿刀砍地窖的牆，被送進了療養院；妻子睡著以後，再也沒有醒來。他出一天二十美元，請你去看看房子到底有什麼毛病。",
@@ -867,7 +877,12 @@ const SCENARIOS=[
   hook:"鐵道迷許哲宇三天前去拍一座廢棄的小站，從此沒有回來。他最後上傳的影片只有十一秒：月台的鐘指著零點，霧裡有車燈靠近。那條支線，已經三十多年沒有火車了。",
   bible:"__BIBLE2__",amb0:"cafe",start:"第1天 14:00",startHour:14,hours:10.1,deadline:"第2天 00:07（今晚午夜過後七分鐘）",unit:"元",cashMult:200,occs:OCCS_MODERN,extra:{"電腦使用":5,"電子學":1},
   opening:"【開場】調查員已就位。請從台北車站附近的咖啡店開始：許哲寧把弟弟的筆電和一個舊哨子推到調查員面前，說明委託（約 200 字），以開放的情境收尾。並發出 [[ITEM:+哲宇的筆電]] 與 [[ITEM:+舊哨子]]。",
-  ends:{best:["淨空","閉塞器的鈴響了一聲。牆上的鐘走到 23:53，三十多年來第一次。"],normal:["誤點","有一件事做到了。另一件，留在霧裡。"],bad:["末班車","車尾燈在霧裡縮成一個紅點，然後沒有了。下一個起霧的晚上，它還會準時進站。"],dead:["乘客","調查員沒有下車。"],insane:["候車的人","調查員每個起霧的晚上都會醒來，看一眼時間。永遠是 23:52。"]}}
+  ends:{best:["淨空","閉塞器的鈴響了一聲。牆上的鐘走到 23:53，三十多年來第一次。"],normal:["誤點","有一件事做到了。另一件，留在霧裡。"],bad:["末班車","車尾燈在霧裡縮成一個紅點，然後沒有了。下一個起霧的晚上，它還會準時進站。"],dead:["乘客","調查員沒有下車。"],insane:["候車的人","調查員每個起霧的晚上都會醒來，看一眼時間。永遠是 23:52。"]}},
+ {id:"mayu",eraKey:"taisho",no:"檔案 03",title:["繭屋","守夜"],era:"大正十三年 · 日本信州山村",kind:"封閉空間 · 守夜求生",pace:"一個下午到天亮",len:"60–90 分鐘",
+  hook:"養蠶大戶糸賀家的老爺過世了。橫濱的生絲商託你帶著奠儀進山，替他守靈一夜，順便問一聲：三個星期前派去收繭的店員，為什麼還沒回來。颱風要來了，過河只有一座吊橋。家裡的老女傭只交代一件事：今晚，線香不能斷。",
+  bible:"__BIBLE3__",amb0:"rain",start:"第1天 13:00",startHour:13,hours:16,deadline:"第2天 05:00（天亮前的第一聲雞鳴）",unit:"圓",cashMult:1,occs:OCCS_TAISHO,extra:{},
+  opening:"【開場】調查員已就位。請從大雨中的吊橋開始：調查員過橋，阿菊撐著油紙傘在橋頭迎接，把人領到糸賀家門前，宗一郎出來接待（約 200 字），以開放的情境收尾。並發出 [[ITEM:+港屋商會的奠儀]] 與 [[ITEM:+相良的相片]]。",
+  ends:{best:["破曉","雞叫了。爐裡的炭還紅著，山谷裡只剩雨停之後的水聲。"],normal:["餘燼","天亮了。有些東西留在了昨夜，沒有跟著出來。"],bad:["雞鳴","第一聲雞叫的時候，三樓傳來很輕的一聲，像紙被撕開。"],dead:["入繭","調查員沒有等到天亮。"],insane:["聽蠶","調查員下了山，卻再也睡不安穩。一閉上眼，就是整片啃桑葉的沙沙聲。"]}}
 ];
 let BASE=BASE0, OCCS=OCCS_1920, SC=SCENARIOS[0];
 function useScenario(id){
@@ -882,6 +897,13 @@ const ATTR_ALIAS={"力量":"STR","體質":"CON","體型":"SIZ","敏捷":"DEX","�
 
 /* ---------- 車卡 ---------- */
 const ICONS=[
+ [/線香|蚊香|盤香|除蟲菊/,'<path d="M12 12a1.6 1.6 0 113.2 0 3.8 3.8 0 01-7.6 0 6 6 0 0112 0 8.2 8.2 0 01-16.4 0"/><path d="M18 5.5c.8-1 .8-2-.2-3"/>'],
+ [/繭|白絲|絲束/,'<ellipse cx="12" cy="12" rx="8.5" ry="5.5" transform="rotate(-20 12 12)"/><path d="M5.5 11c3 1.5 6-3 9-1.5M8 15.5c3 .5 6-4 9.5-3M7.5 8.5c2.5 1 4.5-1.5 7-1"/>'],
+ [/菸|煙管|煙草/,'<rect x="2" y="13" width="15" height="4" rx="1"/><path d="M13 13v4M20 17v-4M22.5 17v-4M18 9c-1.2-1.3 1.2-2.4 0-3.8M21.5 9c-1-1.2 1-2.2 0-3.4"/>'],
+ [/剪/,'<circle cx="6" cy="17.5" r="2.5"/><circle cx="6" cy="6.5" r="2.5"/><path d="M8 8l13 9M8 16L21 7"/>'],
+ [/奠儀|香典/,'<rect x="6" y="2.5" width="12" height="19" rx="1"/><path d="M6 10h12M6 13h12M9.5 10l5 3M14.5 10l-5 3"/>'],
+ [/念珠|佛珠/,'<circle cx="12" cy="4" r="1.6"/><circle cx="17" cy="6.5" r="1.6"/><circle cx="19" cy="11.5" r="1.6"/><circle cx="17" cy="16.5" r="1.6"/><circle cx="12" cy="19" r="1.6"/><circle cx="7" cy="16.5" r="1.6"/><circle cx="5" cy="11.5" r="1.6"/><circle cx="7" cy="6.5" r="1.6"/><path d="M12 20.6V23"/>'],
+ [/算盤/,'<rect x="2.5" y="5" width="19" height="14" rx="1"/><path d="M2.5 9.5h19M7 5v14M12 5v14M17 5v14"/><circle cx="7" cy="13" r="1"/><circle cx="12" cy="15.5" r="1"/><circle cx="17" cy="12.5" r="1"/>'],
  [/路牌/,'<circle cx="12" cy="9" r="6"/><circle cx="12" cy="9" r="2.5"/><path d="M9 14.5L8 21h8l-1-6.5"/>'],
  [/手機/,'<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10.5 18.5h3"/>'],
  [/行動電源|電池/,'<rect x="3" y="8" width="16" height="8" rx="1.5"/><path d="M19 10.5h2v3h-2M9 10l-2 2.5h3L8 15"/>'],
@@ -892,7 +914,7 @@ const ICONS=[
  [/石盤/,'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r=".6"/>'],
  [/現金|鈔|美元/,'<rect x="2" y="6" width="20" height="12" rx="1"/><circle cx="12" cy="12" r="3"/><path d="M5 9v6M19 9v6"/>'],
  [/槍/,'<path d="M3 8h15v3h-6c0 1.5-1 2.5-2.5 2.5L9 19H5l1.5-8H3z"/><path d="M18 8V6.5M12 11v2"/>'],
- [/手電筒|頭燈|筆燈/,'<path d="M3 10h9l5-3v10l-5-3H3z"/><path d="M20 9l2-1M20 12h2M20 15l2 1M6 10v4"/>'],
+ [/手電筒|頭燈|筆燈|電燈/,'<path d="M3 10h9l5-3v10l-5-3H3z"/><path d="M20 9l2-1M20 12h2M20 15l2 1M6 10v4"/>'],
  [/相機|紀錄器/,'<rect x="3" y="7" width="18" height="12" rx="1.5"/><circle cx="12" cy="13" r="3.5"/><path d="M8 7l1.5-2h5L16 7"/>'],
  [/醫療|繃帶|急救|藥/,'<rect x="3" y="7" width="18" height="13" rx="1.5"/><path d="M9 7V5h6v2M12 10.5v6M9 13.5h6"/>'],
  [/證|名片/,'<rect x="3" y="5" width="18" height="14" rx="1.5"/><circle cx="8.5" cy="11" r="2"/><path d="M5.5 16c.5-2 5.5-2 6 0M14 10h5M14 13.5h4"/>'],
@@ -907,8 +929,8 @@ const ICONS=[
  [/棍|鐵撬/,'<path d="M5 21L17 6c1-1.5 3-1.5 3.5 0M17 6l-2-2"/>'],
  [/酒|瓶|水壺/,'<path d="M10 3h4v4l2 3v10a1 1 0 01-1 1H9a1 1 0 01-1-1V10l2-3z"/><path d="M8 13h8"/>'],
  [/筆電|電腦/,'<rect x="5" y="5" width="14" height="10" rx="1"/><path d="M2.5 19h19l-2-4h-15z"/>'],
- [/筆記|日誌|簿|書|冊|聖經/,'<rect x="5" y="3" width="14" height="18" rx="1"/><path d="M8 3v18M11 8h5M11 12h5"/>'],
- [/畫|照片|報|信|紙|頁|圖|清單|文件|地圖/,'<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h7"/>'],
+ [/筆記|日誌|日記|手帖|簿|書|冊|聖經/,'<rect x="5" y="3" width="14" height="18" rx="1"/><path d="M8 3v18M11 8h5M11 12h5"/>'],
+ [/畫|照片|相片|報|信|紙|頁|圖|清單|文件|地圖/,'<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h7"/>'],
  [/箱|包|袋/,'<rect x="3" y="8" width="18" height="12" rx="1.5"/><path d="M9 8V5.5h6V8M3 13h18"/>'],
  [/繩|索/,'<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3.5"/><path d="M17 17l3.5 3.5"/>']
 ];
@@ -916,7 +938,7 @@ const FALLBACK='<path d="M4 4h8l8 8-8 8-8-8z"/><circle cx="8.5" cy="8.5" r="1"/>
 function icon(name){const hit=ICONS.find(([re])=>re.test(name));return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${hit?hit[1]:FALLBACK}</svg>`}
 function itemParts(name){const m=/^(.*?)\s*[（(](.*)[)）]\s*$/.exec(name);return m?[m[1],m[2]]:[name,""]}
 let seenItems=null;
-const ERA={"1920":{label:"1920 年代",unit:"美元"},"modern":{label:"現代",unit:"元"}};
+const ERA={"1920":{label:"1920 年代",unit:"美元",sym:"$"},"modern":{label:"現代",unit:"元",sym:"$"},"taisho":{label:"大正日本",unit:"圓",sym:"¥"}};
 const ROSTER_KEY="coc-roster-v1";
 function loadRoster(){try{const r=JSON.parse(localStorage.getItem(ROSTER_KEY)||"[]");return Array.isArray(r)?r:[]}catch(e){return []}}
 function saveRoster(r){try{localStorage.setItem(ROSTER_KEY,JSON.stringify(r))}catch(e){}}
@@ -943,7 +965,7 @@ function showSheet(rid){
   <div><h4>屬性</h4><div class="mini">${ATTRS.map(x=>`<div><small>${x[1]}</small>${a[x[0]]}</div>`).join("")}</div></div>
   <div><h4>技能</h4><div class="sk">${hi.map(s=>`<div class="hi"><span>${s}</span><span>${pc.skills[s]}</span></div>`).join("")}</div>
     <details><summary>其他技能（基礎值）</summary><div class="sk">${lo.map(s=>`<div><span>${s}</span><span>${pc.skills[s]}</span></div>`).join("")}</div></details></div>
-  <div><h4>初始裝備</h4><div class="inv"><div class="tile cash">${icon("現金")}<span><b>$${pc.cash}</b><small>現金（${era.unit}）</small></span></div>${pc.items.map(x=>{const [n,d]=itemParts(x);return `<div class="tile" title="${esc(x)}">${icon(x)}<span>${esc(n)}${d?`<small>${esc(d)}</small>`:""}</span></div>`}).join("")}</div></div>
+  <div><h4>初始裝備</h4><div class="inv"><div class="tile cash">${icon("現金")}<span><b>${era.sym||"$"}${pc.cash}</b><small>現金（${era.unit}）</small></span></div>${pc.items.map(x=>{const [n,d]=itemParts(x);return `<div class="tile" title="${esc(x)}">${icon(x)}<span>${esc(n)}${d?`<small>${esc(d)}</small>`:""}</span></div>`}).join("")}</div></div>
   <div><h4>經歷</h4>${hist.length?hist.map(esc).join("<br>"):`<span class="empty">尚未出過任務。</span>`}</div>
   <div class="row"><button class="btn" id="sheetClose">關閉</button><button class="btn ghost" id="sheetDel">從名冊刪除</button></div>
   <p class="note">可用於${era.label}背景的劇本。每次出任務都從滿狀態和初始裝備開始，刪除不會影響進行中的存檔。</p>`;
@@ -1143,7 +1165,7 @@ function drawSide(){
   <div><h4>屬性</h4><div class="mini">${ATTRS.map(x=>`<div><small>${x[1]}</small>${a[x[0]]}</div>`).join("")}</div></div>
   <div><h4>技能</h4><div class="sk">${hi.map(s=>`<div class="hi"><span>${s}</span><span>${p.skills[s]}</span></div>`).join("")}</div>
     <details><summary>其他技能（基礎值）</summary><div class="sk">${lo.map(s=>`<div><span>${s}</span><span>${p.skills[s]}</span></div>`).join("")}</div></details></div>
-  <div><h4>隨身物品</h4><div class="inv"><div class="tile cash" title="現金 ${p.cash} ${SC.unit}">${icon("現金")}<span><b>$${p.cash}</b><small>現金</small></span></div>${p.items.map(x=>{const [n,d]=itemParts(x);const isNew=seenItems&&!seenItems.has(x);return `<div class="tile${isNew?" new":""}" title="${esc(x)}">${icon(x)}<span>${esc(n)}${d?`<small>${esc(d)}</small>`:""}</span></div>`}).join("")}</div></div>
+  <div><h4>隨身物品</h4><div class="inv"><div class="tile cash" title="現金 ${p.cash} ${SC.unit}">${icon("現金")}<span><b>${(ERA[SC.eraKey]||{}).sym||"$"}${p.cash}</b><small>現金</small></span></div>${p.items.map(x=>{const [n,d]=itemParts(x);const isNew=seenItems&&!seenItems.has(x);return `<div class="tile${isNew?" new":""}" title="${esc(x)}">${icon(x)}<span>${esc(n)}${d?`<small>${esc(d)}</small>`:""}</span></div>`}).join("")}</div></div>
   <div><h4>調查筆記</h4><button type="button" class="notebtn${clues.length>(S.seenClues||0)?" new":""}" data-notes="1">${icon("筆記")}<span>${clues.length?`已記下 ${clues.length} 則`:"還沒有記下任何東西"}${clues.length?`<small>${esc(clues[clues.length-1][1])}</small>`:""}</span><span aria-hidden="true">${clues.length>(S.seenClues||0)?`<em>新</em>`:"›"}</span></button></div>
   ${statsHTML()}`;
   seenItems=new Set(p.items);
@@ -1304,7 +1326,7 @@ function handleReply(raw){
   drawSide();
   if(fx.length&&Dice.prefs.anim){setPhase("roll");save();Dice.play(fx).then(tail)}else tail();
 }
-const ikey=s=>s.replace(/[（(].*?[)）]/g,"").replace(/[\d.\s]+(發|美元|元|顆|個|瓶|根|張|支|把|枚|份|盒)?/g,"").trim();
+const ikey=s=>s.replace(/[（(].*?[)）]/g,"").replace(/[\d.\s]+(發|美元|元|圓|顆|個|瓶|根|張|支|把|枚|份|盒)?/g,"").trim();
 function findItem(n){const it=S.pc.items,k=ikey(n);let i=it.indexOf(n);if(i<0)i=it.findIndex(x=>x.includes(n)||n.includes(x));if(i<0&&k)i=it.findIndex(x=>ikey(x)===k);return i}
 function setCash(str){const m=/(\d+)/.exec(str);if(m)S.pc.cash=+m[1]}
 function applyItem(v){

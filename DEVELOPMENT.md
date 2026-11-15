@@ -4,7 +4,7 @@
 
 ## 劇透警告
 
-`src/bible.md` 和 `src/bible2.md` 是兩個劇本的守秘人手冊，內含完整真相。想自己玩的人不要打開。
+`src/bible.md`、`src/bible2.md`、`src/bible3.md` 是各個劇本的守秘人手冊，內含完整真相。想自己玩的人不要打開。
 `index.html` 裡的手冊只做了編碼，懂技術的人可以解開。
 
 ## 檔案
@@ -13,7 +13,8 @@
 |---|---|
 | `index.html` | 部署用的成品，由 `build.py` 產生，不要手動編輯 |
 | `src/template.html` | 網頁原始碼（畫面、規則、骰子、音效、模型轉接層） |
-| `src/bible.md`、`src/bible2.md` | 守秘人手冊（有劇透） |
+| `src/bible.md`、`src/bible2.md`、`src/bible3.md` | 守秘人手冊（有劇透） |
+| `tests/` | 手冊檢查與劇本冒煙測試，執行時不會印出手冊內容 |
 | `build.py` | 把上面三個檔組成 `index.html` |
 
 ## 修改與更新
