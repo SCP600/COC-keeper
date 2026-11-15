@@ -1,0 +1,32 @@
+# 開發與部署說明
+
+遊戲玩法請看 [README](README.md)。整個遊戲是一個靜態網頁，沒有後端。
+
+## 劇透警告
+
+`src/bible.md` 和 `src/bible2.md` 是兩個劇本的守秘人手冊，內含完整真相。想自己玩的人不要打開。
+`index.html` 裡的手冊只做了編碼，懂技術的人可以解開。
+
+## 檔案
+
+| 路徑 | 內容 |
+|---|---|
+| `index.html` | 部署用的成品，由 `build.py` 產生，不要手動編輯 |
+| `src/template.html` | 網頁原始碼（畫面、規則、骰子、音效、模型轉接層） |
+| `src/bible.md`、`src/bible2.md` | 守秘人手冊（有劇透） |
+| `build.py` | 把上面三個檔組成 `index.html` |
+
+## 修改與更新
+
+1. 改 `src/` 裡的檔案。
+2. 執行 `python3 build.py`。
+3. 提交並推送。GitHub Pages 會在一兩分鐘內自動更新，網址不變，玩家的存檔不受影響。
+
+## 部署（GitHub Pages）
+
+儲存庫的 Settings → Pages → Build and deployment：Source 選「Deploy from a branch」，Branch 選 `main`、資料夾選 `/ (root)`。
+
+## 目前的狀態
+
+外部模型的連線、串流和錯誤處理已用模擬的 API 回應測過，還沒有用真實金鑰跑過任何一家。
+主持規則是照 Claude 調整的，換成其他模型後，格式遵守程度和主持品質都需要實測再調整。
