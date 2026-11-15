@@ -239,6 +239,7 @@ details summary{cursor:pointer;color:var(--dim);margin-top:6px}
 #settings .row{margin-top:18px}
 .seth{font-family:var(--serif);font-weight:900;font-size:19px;margin:26px 0 0}
 .setp{font-size:12.5px;color:var(--dim);line-height:1.6;margin:8px 0 2px}
+.setp.warn{color:var(--paper);border-left:2px solid var(--lamp);padding:6px 0 6px 10px;background:rgba(215,164,69,.06)}
 .setrow.col{flex-direction:column;align-items:stretch;gap:8px}
 .setrow select,.field.wide{background:var(--ink);border:1px solid var(--line);padding:8px 10px;max-width:none;width:100%;font-family:var(--sans);font-size:14px}
 .setrow select{width:auto;max-width:240px}
@@ -780,8 +781,8 @@ const Snd=(()=>{
 const IN_CLAUDE=!!(window.claude&&window.claude.use);
 const LLM=(()=>{
   const KEY="coc-llm-v1";
-  const cfg={provider:"",gemini:{key:"",model:"gemini-flash-latest"},anthropic:{key:"",model:"claude-sonnet-5-5"},compat:{key:"",model:"",base:"https://openrouter.ai/api/v1"}};
-  try{const s=JSON.parse(localStorage.getItem(KEY)||"{}");for(const k of ["gemini","anthropic","compat"])Object.assign(cfg[k],s[k]||{});cfg.provider=s.provider||""}catch(e){}
+  const cfg={provider:"",gemini:{key:"",model:"gemini-flash-latest"},anthropic:{key:"",model:"claude-sonnet-5-5"},groq:{key:"",model:"openai/gpt-oss-120b"},compat:{key:"",model:"",base:"https://openrouter.ai/api/v1"}};
+  try{const s=JSON.parse(localStorage.getItem(KEY)||"{}");for(const k of ["gemini","anthropic","groq","compat"])Object.assign(cfg[k],s[k]||{});cfg.provider=s.provider||""}catch(e){}
   const saveCfg=()=>{try{localStorage.setItem(KEY,JSON.stringify(cfg))}catch(e){}};
   let art=null;
   async function artifact(){if(art)return art;if(!IN_CLAUDE)return null;try{art=await window.claude.use("sample")}catch(e){art=null}return art}
@@ -789,7 +790,8 @@ const LLM=(()=>{
   async function fail(res){
     let msg="";try{const t=await res.text();try{const j=JSON.parse(t);msg=(j.error&&(j.error.message||j.error.type))||j.message||t}catch(e){msg=t}}catch(e){}
     msg=String(msg).slice(0,300);const s=res.status;
-    throw {code:s===401||s===403?"bad_key":s===429?"rate_limited":s>=500?"upstream_error":"bad_request",message:msg,status:s};
+    const big=s===413||/request too large|tokens per minute/i.test(msg);
+    throw {code:big?"tpm_exceeded":s===401||s===403?"bad_key":s===429?"rate_limited":s>=500?"upstream_error":"bad_request",message:msg,status:s};
   }
   async function sse(res,onData){
     const rd=res.body.getReader(),dec=new TextDecoder();let buf="";
@@ -798,6 +800,25 @@ const LLM=(()=>{
         if(!line.startsWith("data:"))continue;const d=line.slice(5).trim();if(!d||d==="[DONE]")continue;
         let j;try{j=JSON.parse(d)}catch(e){continue}onData(j)}}
   }
+  const GROQ_BASE="https://api.groq.com/openai/v1";
+  // OpenAI 相容的 /chat/completions 串流。部分模型會把思考寫在 <think> 裡，顯示前去掉
+  const noThink=t=>t.replace(/<think>[\s\S]*?(<\/think>\s*|$)/g,"");
+  async function oaChat(base,c,ms,o,extra){
+    const res=await fetch(base.replace(/\/+$/,"")+"/chat/completions",{method:"POST",signal:o.signal,
+      headers:{"content-type":"application/json","authorization":"Bearer "+c.key},
+      body:JSON.stringify({model:c.model,stream:true,stream_options:{include_usage:true},...extra,messages:[{role:"system",content:ms[0].content},...merge(ms.slice(1))]})});
+    if(!res.ok)await fail(res);
+    let raw="",usage=null,err=null;
+    await sse(res,j=>{
+      if(j.error)err=j.error;
+      const d=j.choices&&j.choices[0]&&j.choices[0].delta;if(d&&typeof d.content==="string"&&d.content){raw+=d.content;const t=noThink(raw);if(t)o.onText(t)}
+      const u=j.usage||(j.x_groq&&j.x_groq.usage);if(u)usage={input:u.prompt_tokens||0,output:u.completion_tokens||0};
+    });
+    const text=noThink(raw);
+    if(err&&!text){const m=String(err.message||err).slice(0,300);throw {code:/request too large|tokens per minute/i.test(m)?"tpm_exceeded":"upstream_error",message:m}}
+    return {text,usage,model:c.model}}
+  async function oaModels(base,key){const r=await fetch(base.replace(/\/+$/,"")+"/models",{headers:{authorization:"Bearer "+key}});if(!r.ok)await fail(r);
+    const j=await r.json();return (j.data||[]).map(m=>m.id)}
   const P={
     artifact:{label:"Claude（頁面內建）",
       async chat(ms,o){const s=await artifact();if(!s)throw {code:"no_provider"};
@@ -840,29 +861,22 @@ const LLM=(()=>{
         return {text,usage:{input:inp,output:out},model:c.model}},
       async models(){const r=await fetch("https://api.anthropic.com/v1/models?limit=100",{headers:{"x-api-key":cfg.anthropic.key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"}});if(!r.ok)await fail(r);
         const j=await r.json();return (j.data||[]).map(m=>m.id)}},
+    groq:{label:"Groq",keyHint:"在 GroqCloud 主控台（console.groq.com）建立的 API 金鑰，開頭是 gsk_",
+      async chat(ms,o){const c=cfg.groq,extra={max_completion_tokens:4096};
+        // gpt-oss 是推理模型：推理也算輸出額度，調低並且不回傳推理內容
+        if(/gpt-oss/.test(c.model))Object.assign(extra,{reasoning_effort:"low",include_reasoning:false});
+        return oaChat(GROQ_BASE,c,ms,o,extra)},
+      async models(){return (await oaModels(GROQ_BASE,cfg.groq.key)).filter(id=>!/whisper|orpheus|tts|guard|playai|distil/i.test(id))}},
     compat:{label:"OpenAI 相容端點（OpenRouter 等）",keyHint:"該服務的 API 金鑰",
-      async chat(ms,o){const c=cfg.compat,base=c.base.replace(/\/+$/,"");
-        const res=await fetch(base+"/chat/completions",{method:"POST",signal:o.signal,
-          headers:{"content-type":"application/json","authorization":"Bearer "+c.key},
-          body:JSON.stringify({model:c.model,stream:true,max_tokens:2048,stream_options:{include_usage:true},messages:[{role:"system",content:ms[0].content},...merge(ms.slice(1))]})});
-        if(!res.ok)await fail(res);
-        let text="",usage=null,err=null;
-        await sse(res,j=>{
-          if(j.error)err=j.error;
-          const d=j.choices&&j.choices[0]&&j.choices[0].delta;if(d&&typeof d.content==="string"&&d.content){text+=d.content;o.onText(text)}
-          if(j.usage)usage={input:j.usage.prompt_tokens||0,output:j.usage.completion_tokens||0};
-        });
-        if(err&&!text)throw {code:"upstream_error",message:String(err.message||err).slice(0,300)};
-        return {text,usage,model:c.model}},
-      async models(){const r=await fetch(cfg.compat.base.replace(/\/+$/,"")+"/models",{headers:{authorization:"Bearer "+cfg.compat.key}});if(!r.ok)await fail(r);
-        const j=await r.json();return (j.data||[]).map(m=>m.id)}}
+      chat:(ms,o)=>oaChat(cfg.compat.base,cfg.compat,ms,o,{max_tokens:2048}),
+      models:()=>oaModels(cfg.compat.base,cfg.compat.key)}
   };
   const usable=id=>id==="artifact"?IN_CLAUDE:!!(cfg[id]&&cfg[id].key&&cfg[id].model);
-  function current(){if(IN_CLAUDE)return "artifact";if(cfg.provider&&usable(cfg.provider))return cfg.provider;return ["gemini","anthropic","compat"].find(usable)||""}
+  function current(){if(IN_CLAUDE)return "artifact";if(cfg.provider&&usable(cfg.provider))return cfg.provider;return ["gemini","anthropic","groq","compat"].find(usable)||""}
   const norm=e=>{if(e&&e.code)return e;if(e&&e.name==="AbortError")return {code:"cancelled"};if(e instanceof TypeError)return {code:"network",message:String(e.message||"")};return {code:"upstream_error",message:String(e&&e.message||e)}};
   return {
     cfg,P,current,usable,
-    ids:()=>IN_CLAUDE?["artifact"]:["gemini","anthropic","compat"],
+    ids:()=>IN_CLAUDE?["artifact"]:["gemini","anthropic","groq","compat"],
     label(){const id=current();return id?P[id].label:"尚未設定"},
     async ready(){const id=current();if(id==="artifact")return !!(await artifact());return !!id},
     async chat(ms,o){const id=current();if(!id)throw {code:"no_provider"};
@@ -1230,7 +1244,7 @@ function setPhase(ph){
 }
 
 /* ---------- 與守秘人對話 ---------- */
-const ERR={not_granted:"這個頁面沒有獲得使用 Claude 的許可，守秘人無法主持。重新整理頁面後可以再同意一次。",sampling_disabled:"這個帳號目前無法在頁面中使用 Claude。",rate_limited:"用量達到上限或呼叫太頻繁，請稍等幾分鐘再按「重試」。",session_expired:"登入已過期，請重新登入 Claude 後再試。",refused:"守秘人拒絕了這段內容。請換個方式描述行動。",prompt_too_large:"對話太長了，無法再送出。",upstream_error:"連線中斷了。請按「重試」。",bad_key:"API 金鑰無效，或這把金鑰沒有使用這個模型的權限。請到設定檢查。",no_provider:"還沒有設定守秘人要用的模型。",network:"連不上模型服務。請檢查網路；如果用的是相容端點，它可能不允許從瀏覽器直接連線。",bad_request:"模型服務拒絕了這個請求，通常是模型名稱不對。"};
+const ERR={not_granted:"這個頁面沒有獲得使用 Claude 的許可，守秘人無法主持。重新整理頁面後可以再同意一次。",sampling_disabled:"這個帳號目前無法在頁面中使用 Claude。",rate_limited:"用量達到上限或呼叫太頻繁，請稍等幾分鐘再按「重試」。",session_expired:"登入已過期，請重新登入 Claude 後再試。",refused:"守秘人拒絕了這段內容。請換個方式描述行動。",prompt_too_large:"對話太長了，無法再送出。",upstream_error:"連線中斷了。請按「重試」。",bad_key:"API 金鑰無效，或這把金鑰沒有使用這個模型的權限。請到設定檢查。",no_provider:"還沒有設定守秘人要用的模型。",network:"連不上模型服務。請檢查網路；如果用的是相容端點，它可能不允許從瀏覽器直接連線。",bad_request:"模型服務拒絕了這個請求，通常是模型名稱不對。",tpm_exceeded:"這一回合要送出的內容，超過了這把金鑰每分鐘可用的 token 上限，所以模型服務直接拒收。等一分鐘重試也不會過。可以到該服務的後台提高方案上限，或在設定換一家服務。"};
 /* 標記可能含有巢狀的 [[ ]] 或單獨的 ]，所以用括號配對來切，不用正規表示式。沒收尾的標記一律吃到結尾。 */
 function splitTags(raw){
   let out="",i=0;const tags=[];
@@ -1320,7 +1334,7 @@ async function send(content,shown){
     el.remove();busy=false;S.turns.pop();
     const code=e&&e.code;
     if(code==="cancelled"){S.inflight=null;setPhase("input");save();return}
-    offerRetry((ERR[code]||ERR.upstream_error)+(e&&e.message&&["bad_request","upstream_error","network","refused"].includes(code)?"（"+e.message+"）":""),content,["bad_key","no_provider","network","bad_request"].includes(code));
+    offerRetry((ERR[code]||ERR.upstream_error)+(e&&e.message&&["bad_request","upstream_error","network","refused"].includes(code)?"（"+e.message+"）":""),content,["bad_key","no_provider","network","bad_request","tpm_exceeded"].includes(code));
   }
 }
 function offerRetry(msg,content,cfgBtn){
@@ -1590,6 +1604,7 @@ function llmSection(){
   return `<h3 class="seth">守秘人模型</h3>
   <p class="setp">這個版本由你自己選的 AI 模型主持，費用由你的 API 金鑰支付。金鑰只存在這個瀏覽器，只會送給你選的那家服務。建議在該服務的後台替這把金鑰設用量上限。</p>
   <div class="setrow"><div><b>模型服務</b></div><select id="llmProv" aria-label="模型服務">${LLM.ids().map(id=>`<option value="${id}"${id===sel?" selected":""}>${LLM.P[id].label}</option>`).join("")}</select></div>
+  ${sel==="groq"?`<p class="setp warn">Groq 的回應很快，但基本方案每分鐘只能用約 8K token。這個遊戲每回合會送出規則、整份守秘人手冊和最近的對話，開場估計就要 6K 到 8K，之後每回合再多幾百，通常幾回合內就會超過上限而被拒收。想完整玩一場，需要在 Groq 後台把方案的上限調高。</p>`:""}
   ${sel==="compat"?`<div class="setrow col"><label for="llmBase"><b>端點網址</b><small>相容 OpenAI 的 /chat/completions 介面。官方 OpenAI 端點不接受瀏覽器直接連線。</small></label><input class="field wide" id="llmBase" value="${esc(c.base)}" spellcheck="false" autocomplete="off"></div>`:""}
   <div class="setrow col"><label for="llmKey"><b>API 金鑰</b><small>${p.keyHint}</small></label><input class="field wide" id="llmKey" type="password" value="${esc(c.key)}" autocomplete="off" spellcheck="false" placeholder="貼上金鑰"></div>
   <div class="setrow col"><label for="llmModel"><b>模型名稱</b><small>可以直接改。按「列出可用模型」會用你的金鑰查這家目前有哪些。</small></label><input class="field wide" id="llmModel" value="${esc(c.model)}" list="llmList" spellcheck="false" autocomplete="off" placeholder="模型的識別字串"><datalist id="llmList">${llmModels.map(m=>`<option value="${esc(m)}">`).join("")}</datalist></div>

@@ -172,8 +172,10 @@ COC-keeper/
 
 - 回傳 `{text, usage?, model?, tier?}`；失敗丟出 `{code, message}`。
 - `onText` 一律給「目前為止的完整文字」。
-- 錯誤代碼統一為：`cancelled`、`rate_limited`、`refused`、`upstream_error`、`bad_key`、`bad_request`、`network`、`no_provider`、`not_granted`、`session_expired`、`sampling_disabled`、`prompt_too_large`。各家的錯誤在轉接器裡翻譯。
-- 供應商：`artifact`（Claude 內建）、`gemini`、`anthropic`、`compat`（OpenAI 相容，預設 OpenRouter）。
+- 錯誤代碼統一為：`cancelled`、`rate_limited`、`refused`、`upstream_error`、`bad_key`、`bad_request`、`network`、`no_provider`、`not_granted`、`session_expired`、`sampling_disabled`、`prompt_too_large`、`tpm_exceeded`。各家的錯誤在轉接器裡翻譯。`tpm_exceeded` 是單一請求就超過金鑰每分鐘 token 上限（HTTP 413，或訊息含 Request too large），重試沒用，所以和 `rate_limited` 分開。
+- 供應商：`artifact`（Claude 內建）、`gemini`、`anthropic`、`groq`、`compat`（OpenAI 相容，預設 OpenRouter）。`groq` 和 `compat` 共用 `oaChat`／`oaModels`（OpenAI 相容的串流與模型清單），只差在預設端點與額外參數。
+- Groq：端點 `https://api.groq.com/openai/v1`，預設模型 `openai/gpt-oss-120b`，允許瀏覽器直接呼叫（2026-11 在 GitHub Pages 實測過）。gpt-oss 系列送 `reasoning_effort:"low"`、`include_reasoning:false`，輸出上限用 `max_completion_tokens: 4096`，因為推理也算輸出額度。用量從最後一個區塊的 `x_groq.usage` 讀。模型清單濾掉語音、合成與安全分類模型。**基本方案每分鐘約 8K token**，而本遊戲每回合送出規則加手冊就要 6K 到 8K，幾回合內會撞上限；設定面板有說明，要完整玩需要提高方案上限。
+- 所有 OpenAI 相容的回應都會去掉 `<think>…</think>`，避免推理內容出現在畫面上。
 - 模型名稱是可編輯的文字欄位，並有「列出可用模型」按鈕。不要把特定型號寫死，型號變動很快。
 
 換模型或調整其他模型的主持表現時，照 `coc-keeper-model-port` skill 的流程做：先建基準、先量再改、解析容錯優先於改提示詞、規則分成共用核心和各模型的補丁。
@@ -525,4 +527,5 @@ COC-keeper/
 | 金額符號跟著年代走 | 原本寫死「$」，日圓劇本顯示不對 |
 | 遊戲中可以從劇本名叫出簡介 | 玩家想回顧引子時原本得回首頁 |
 | 窄螢幕不再藏劇本名 | 原本在平板以下直接隱藏，簡介卡因此沒有入口 |
+| Groq 獨立成一家，不讓玩家自己填相容端點 | 新手不必知道端點網址；也才能針對 gpt-oss 帶推理參數、讀 `x_groq.usage` |
 | 外層網格欄寬用 `minmax(0,1fr)` | 380px 以下的手機，上方列把整個遊戲畫面撐寬，右側被裁掉 |
