@@ -90,5 +90,5 @@
 
 ## 其他
 
-- 修改與部署方式見 [DEVELOPMENT.md](DEVELOPMENT.md)。
+- 修改與部署方式見 [DEVELOPMENT.md](DEVELOPMENT.md)，完整的開發規格見 [SPEC.md](SPEC.md)。
 - 劇本為原創，規則參考《克蘇魯的呼喚》第七版並做了簡化。這是非官方的愛好者作品。
