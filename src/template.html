@@ -795,7 +795,7 @@ const Snd=(()=>{
 const IN_CLAUDE=!!(window.claude&&window.claude.use);
 const LLM=(()=>{
   const KEY="coc-llm-v1";
-  const cfg={provider:"",gemini:{key:"",model:"gemini-flash-latest"},anthropic:{key:"",model:"claude-sonnet-5-5"},groq:{key:"",model:"openai/gpt-oss-120b"},chatgpt:{model:""},compat:{key:"",model:"",base:"https://openrouter.ai/api/v1"}};
+  const cfg={provider:"",gemini:{key:"",model:"gemini-flash-latest",think:"low"},anthropic:{key:"",model:"claude-sonnet-5-5"},groq:{key:"",model:"openai/gpt-oss-120b"},chatgpt:{model:""},compat:{key:"",model:"",base:"https://openrouter.ai/api/v1"}};
   try{const s=JSON.parse(localStorage.getItem(KEY)||"{}");for(const k of ["gemini","anthropic","groq","chatgpt","compat"])Object.assign(cfg[k],s[k]||{});cfg.provider=s.provider||""}catch(e){}
   const saveCfg=()=>{try{localStorage.setItem(KEY,JSON.stringify(cfg))}catch(e){}};
   let art=null;
@@ -815,6 +815,11 @@ const LLM=(()=>{
         let j;try{j=JSON.parse(d)}catch(e){continue}onData(j)}}
   }
   const GROQ_BASE="https://api.groq.com/openai/v1";
+  // Gemini 的思考量：預設的「動態思考」可能想很久才開口。2.5 系列用 thinkingBudget，3 以後（含 -latest 別名）用 thinkingLevel
+  function geminiThinking(model,level){
+    if(!level||level==="auto")return null;
+    if(/gemini-2\.5/.test(model)){const pro=/pro/.test(model);return {thinkingBudget:level==="low"?(pro?128:0):level==="medium"?2048:8192}}
+    return {thinkingLevel:level}}
   // 本機啟動器（play.py）：只有從 127.0.0.1 開啟、而且 /siwc/status 有回應時才算數。登入憑證留在啟動器，頁面只拿得到狀態
   const SIWC={launcher:false,signedIn:false,planUsage:false,email:"",welcomed:true,models:[]};
   async function siwcStatus(){
@@ -848,11 +853,14 @@ const LLM=(()=>{
         const r=await s(ms,{cache:false,signal:o.signal,onText:({text})=>o.onText(text)});return {text:r.text,tier:r.modelTierApplied}}},
     gemini:{label:"Google Gemini",keyHint:"在 Google AI Studio 建立的 API 金鑰",
       async chat(ms,o){const c=cfg.gemini,rest=merge(ms.slice(1));
-        const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(c.model)}:streamGenerateContent?alt=sse`,{method:"POST",signal:o.signal,
+        const tc=geminiThinking(c.model,c.think);
+        const call=gc=>fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(c.model)}:streamGenerateContent?alt=sse`,{method:"POST",signal:o.signal,
           headers:{"content-type":"application/json","x-goog-api-key":c.key},
           body:JSON.stringify({systemInstruction:{parts:[{text:ms[0].content}]},contents:rest.map(m=>({role:m.role==="assistant"?"model":"user",parts:[{text:m.content}]})),
-            generationConfig:{maxOutputTokens:4096},
+            generationConfig:gc,
             safetySettings:["HARM_CATEGORY_HARASSMENT","HARM_CATEGORY_HATE_SPEECH","HARM_CATEGORY_SEXUALLY_EXPLICIT","HARM_CATEGORY_DANGEROUS_CONTENT"].map(category=>({category,threshold:"BLOCK_ONLY_HIGH"}))})});
+        let res=await call(tc?{maxOutputTokens:8192,thinkingConfig:tc}:{maxOutputTokens:8192});
+        if(res.status===400&&tc){const t=await res.clone().text();if(/thinking/i.test(t))res=await call({maxOutputTokens:8192})}
         if(!res.ok)await fail(res);
         let text="",usage=null,blocked="";
         await sse(res,j=>{
@@ -1197,7 +1205,7 @@ function statsHTML(){
   <dt>呼叫次數</dt><dd>${st.calls}</dd>
   <dt>上次輸入</dt><dd>${st.real?"":"約 "}${fmt(st.lastIn)} token</dd>
   <dt>上次輸出</dt><dd>${st.real?"":"約 "}${fmt(st.lastOut)} token</dd>
-  <dt>上次耗時</dt><dd>${(st.lastMs/1000).toFixed(1)} 秒</dd>
+  <dt>上次耗時</dt><dd>${(st.lastMs/1000).toFixed(1)} 秒${st.firstMs?`（${(st.firstMs/1000).toFixed(1)} 秒後開始出字）`:""}</dd>
   <dt>累計輸入</dt><dd>約 ${fmt(st.inTok)} token</dd>
   <dt>累計輸出</dt><dd>約 ${fmt(st.outTok)} token</dd>
   <dt>送出的對話則數</dt><dd>${st.turns}</dd>
@@ -1356,10 +1364,10 @@ async function send(content,shown){
   try{
     const input=buildInput(),inTok=input.reduce((n,t)=>n+estTok(t.content),0),t0=performance.now();
     typer=makeTyper(el);
-    const res=await LLM.chat(input,{signal:ctl.signal,onText:t=>{if(S===mine)typer.set(cleanText(t))}});
+    let first=0;const res=await LLM.chat(input,{signal:ctl.signal,onText:t=>{if(!first)first=performance.now();if(S===mine)typer.set(cleanText(t))}});
     const text=res.text;
     if(S===mine){const st=S.stats||(S.stats={calls:0,inTok:0,outTok:0}),real=!!res.usage,i=real?res.usage.input:inTok,o=real?res.usage.output:estTok(text);
-      st.calls++;st.inTok+=i;st.outTok+=o;st.lastIn=i;st.lastOut=o;st.real=real;st.lastMs=performance.now()-t0;st.tier=res.tier||"";st.model=res.model||"";st.prov=LLM.label();st.turns=input.length-1}
+      st.calls++;st.inTok+=i;st.outTok+=o;st.lastIn=i;st.lastOut=o;st.real=real;st.lastMs=performance.now()-t0;st.firstMs=first?first-t0:0;st.tier=res.tier||"";st.model=res.model||"";st.prov=LLM.label();st.turns=input.length-1}
     if(S!==mine){typer.stop();return}
     {const sp0=splitTags(text);let fxKey=null;
       for(const b of sp0.tags){const m=/^\s*(AMB|SFX)\s*[:：]\s*([A-Za-z]+)/i.exec(b);if(!m)continue;const k=m[2].toLowerCase();
@@ -1677,6 +1685,7 @@ function llmSection(){
   <p class="setp">${sel==="chatgpt"?"這個版本由你自己選的 AI 模型主持。選「ChatGPT 方案」時用的是你 ChatGPT 方案內含的用量；選其他服務時，費用由你的 API 金鑰支付。":"這個版本由你自己選的 AI 模型主持，費用由你的 API 金鑰支付。金鑰只存在這個瀏覽器，只會送給你選的那家服務。建議在該服務的後台替這把金鑰設用量上限。"}</p>
   <div class="setrow"><div><b>模型服務</b></div><select id="llmProv" aria-label="模型服務">${LLM.ids().map(id=>`<option value="${id}"${id===sel?" selected":""}>${LLM.P[id].label}</option>`).join("")}</select></div>
   ${sel==="chatgpt"?siwcBlock(c):""}
+  ${sel==="gemini"?`<div class="setrow"><div><b>回應速度</b><small>模型開口前要想多久。想得越少越快；想得多可能比較周到，但一回合可能要等好幾分鐘。</small></div><select id="gemThink" aria-label="回應速度">${[["low","快（建議）"],["medium","平衡"],["high","仔細（很慢）"],["auto","交給模型決定"]].map(([v,t])=>`<option value="${v}"${(c.think||"low")===v?" selected":""}>${t}</option>`).join("")}</select></div>`:""}
   ${sel==="groq"?`<p class="setp warn">Groq 的回應很快，但基本方案每分鐘只能用約 8K token。這個遊戲每回合會送出規則、整份守秘人手冊和最近的對話，開場估計就要 6K 到 8K，之後每回合再多幾百，通常幾回合內就會超過上限而被拒收。想完整玩一場，需要在 Groq 後台把方案的上限調高。</p>`:""}
   ${sel==="compat"?`<div class="setrow col"><label for="llmBase"><b>端點網址</b><small>相容 OpenAI 的 /chat/completions 介面。官方 OpenAI 端點不接受瀏覽器直接連線。</small></label><input class="field wide" id="llmBase" value="${esc(c.base)}" spellcheck="false" autocomplete="off"></div>`:""}
   ${sel==="chatgpt"?"":`<div class="setrow col"><label for="llmKey"><b>API 金鑰</b><small>${p.keyHint}</small></label><input class="field wide" id="llmKey" type="password" value="${esc(c.key)}" autocomplete="off" spellcheck="false" placeholder="貼上金鑰"></div>
@@ -1734,6 +1743,7 @@ $("#settings").onchange=e=>{
   const id=e.target.id;
   if(id==="llmProv"){LLM.set("provider",e.target.value);llmModels=[];llmMsg="";drawSettings();if(e.target.value==="chatgpt"&&LLM.SIWC.planUsage&&!LLM.SIWC.models.length)siwcLoadModels().then(drawSettings);drawPlanNote()}
   else if(id==="siwcModel"){LLM.set("chatgpt","model",e.target.value);drawPlanNote()}
+  else if(id==="gemThink")LLM.set("gemini","think",e.target.value);
   else if(id==="llmKey")LLM.set(llmSel(),"key",e.target.value);
   else if(id==="llmModel")LLM.set(llmSel(),"model",e.target.value);
   else if(id==="llmBase")LLM.set(llmSel(),"base",e.target.value);

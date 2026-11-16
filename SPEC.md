@@ -179,6 +179,8 @@ COC-keeper/
 - 供應商：`artifact`（Claude 內建）、`chatgpt`（ChatGPT 方案，只在本機啟動器下出現，見 5.5）、`gemini`、`anthropic`、`groq`、`compat`（OpenAI 相容，預設 OpenRouter）。`groq` 和 `compat` 共用 `oaChat`／`oaModels`（OpenAI 相容的串流與模型清單），只差在預設端點與額外參數。
 - Groq：端點 `https://api.groq.com/openai/v1`，預設模型 `openai/gpt-oss-120b`，允許瀏覽器直接呼叫（2026-11 在 GitHub Pages 實測過）。gpt-oss 系列送 `reasoning_effort:"low"`、`include_reasoning:false`，輸出上限用 `max_completion_tokens: 4096`，因為推理也算輸出額度。用量從最後一個區塊的 `x_groq.usage` 讀。模型清單濾掉語音、合成與安全分類模型。**基本方案每分鐘約 8K token**，而本遊戲每回合送出規則加手冊就要 6K 到 8K，幾回合內會撞上限；設定面板有說明，要完整玩需要提高方案上限。
 - 所有 OpenAI 相容的回應都會去掉 `<think>…</think>`，避免推理內容出現在畫面上。
+- Gemini：預設思考量是「動態」，實測一回合可能要 220 到 240 秒，所以預設帶 `thinkingConfig`。2.5 系列用 `thinkingBudget`（flash 0、pro 128），其他型號與 `-latest` 別名用 `thinkingLevel:"low"`。被模型以 400 拒絕且訊息提到 thinking 時，拿掉設定重送一次。設定面板的「回應速度」可選快／平衡／仔細／交給模型決定（`cfg.gemini.think`）。`maxOutputTokens` 為 8192，因為思考也算在內。
+- 觀察面板的「上次耗時」附上開始出字的時間，用來分辨是模型在思考，還是輸出本身慢。
 - 模型名稱是可編輯的文字欄位，並有「列出可用模型」按鈕。不要把特定型號寫死，型號變動很快。
 
 ### 5.5 本機啟動器與 Sign in with ChatGPT（`play.py`）
@@ -560,6 +562,7 @@ OpenAI 開放給開源工具自助接入的 Sign in with ChatGPT 只支援在使
 | 金額符號跟著年代走 | 原本寫死「$」，日圓劇本顯示不對 |
 | 遊戲中可以從劇本名叫出簡介 | 玩家想回顧引子時原本得回首頁 |
 | 窄螢幕不再藏劇本名 | 原本在平板以下直接隱藏，簡介卡因此沒有入口 |
+| Gemini 預設低思考量 | 預設的動態思考讓一回合要等約 4 分鐘；守秘人的回應不需要長推理 |
 | ChatGPT 方案做成本機啟動器 | 官方開源接入只允許導回 127.0.0.1；網站版要申請 |
 | 權杖留在啟動器，不給網頁 | 頁面裡的任何東西都可能被讀到；啟動器有檔案權限保護 |
 | 啟動器只用 Python 標準函式庫 | 玩家不必安裝套件；RS256 驗章用純 Python 實作 |
