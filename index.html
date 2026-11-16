@@ -804,8 +804,8 @@ const LLM=(()=>{
   async function fail(res){
     let msg="";try{const t=await res.text();try{const j=JSON.parse(t);msg=(j.error&&(j.error.message||j.error.type))||j.message||t}catch(e){msg=t}}catch(e){}
     msg=String(msg).slice(0,300);const s=res.status;
-    const big=s===413||/request too large|tokens per minute/i.test(msg);
-    throw {code:big?"tpm_exceeded":s===401||s===403?"bad_key":s===429?"rate_limited":s>=500?"upstream_error":"bad_request",message:msg,status:s};
+    const big=s===413||/request too large|tokens per minute/i.test(msg),busy=s===503||s===529||/high demand|overloaded/i.test(msg);
+    throw {code:big?"tpm_exceeded":busy?"overloaded":s===401||s===403?"bad_key":s===429?"rate_limited":s>=500?"upstream_error":"bad_request",message:msg,status:s};
   }
   async function sse(res,onData){
     const rd=res.body.getReader(),dec=new TextDecoder();let buf="";
@@ -1293,7 +1293,7 @@ function setPhase(ph){
 }
 
 /* ---------- 與守秘人對話 ---------- */
-const ERR={not_granted:"這個頁面沒有獲得使用 Claude 的許可，守秘人無法主持。重新整理頁面後可以再同意一次。",sampling_disabled:"這個帳號目前無法在頁面中使用 Claude。",rate_limited:"用量達到上限或呼叫太頻繁，請稍等幾分鐘再按「重試」。",session_expired:"登入已過期，請重新登入 Claude 後再試。",refused:"守秘人拒絕了這段內容。請換個方式描述行動。",prompt_too_large:"對話太長了，無法再送出。",upstream_error:"連線中斷了。請按「重試」。",bad_key:"API 金鑰無效，或這把金鑰沒有使用這個模型的權限。請到設定檢查。",no_provider:"還沒有設定守秘人要用的模型。",network:"連不上模型服務。請檢查網路；如果用的是相容端點，它可能不允許從瀏覽器直接連線。",bad_request:"模型服務拒絕了這個請求，通常是模型名稱不對。",signed_out:"ChatGPT 的登入已失效。請到設定按 Continue with ChatGPT 重新登入。",plan_limit:"ChatGPT 方案的用量到上限了。可能是整個方案的額度，也可能是你替這個遊戲設的上限。到 ChatGPT 設定的「用量」頁面查看。",plan_unavailable:"ChatGPT 方案暫時無法使用，請過幾分鐘再按「重試」。",plan_not_eligible:"這個 ChatGPT 帳號目前不能把方案用在這個遊戲（方案類型、工作區設定或所在地區的限制）。可以到設定改用 API 金鑰。",plan_scope:"登入時沒有同意讓這個遊戲使用 ChatGPT 方案。請到設定登出後重新登入，在同意畫面允許使用方案。",tpm_exceeded:"這一回合要送出的內容，超過了這把金鑰每分鐘可用的 token 上限，所以模型服務直接拒收。等一分鐘重試也不會過。可以到該服務的後台提高方案上限，或在設定換一家服務。"};
+const ERR={not_granted:"這個頁面沒有獲得使用 Claude 的許可，守秘人無法主持。重新整理頁面後可以再同意一次。",sampling_disabled:"這個帳號目前無法在頁面中使用 Claude。",rate_limited:"用量達到上限或呼叫太頻繁，請稍等幾分鐘再按「重試」。",session_expired:"登入已過期，請重新登入 Claude 後再試。",refused:"守秘人拒絕了這段內容。請換個方式描述行動。",prompt_too_large:"對話太長了，無法再送出。",upstream_error:"連線中斷了。請按「重試」。",bad_key:"API 金鑰無效，或這把金鑰沒有使用這個模型的權限。請到設定檢查。",no_provider:"還沒有設定守秘人要用的模型。",network:"連不上模型服務。請檢查網路；如果用的是相容端點，它可能不允許從瀏覽器直接連線。",bad_request:"模型服務拒絕了這個請求，通常是模型名稱不對。",overloaded:"這個模型現在太多人在用，服務商那邊塞車了（通常是暫時的）。可以等一下再按「重試」，或到設定換一個模型，例如 Gemini 名稱有 flash-lite 的模型。",signed_out:"ChatGPT 的登入已失效。請到設定按 Continue with ChatGPT 重新登入。",plan_limit:"ChatGPT 方案的用量到上限了。可能是整個方案的額度，也可能是你替這個遊戲設的上限。到 ChatGPT 設定的「用量」頁面查看。",plan_unavailable:"ChatGPT 方案暫時無法使用，請過幾分鐘再按「重試」。",plan_not_eligible:"這個 ChatGPT 帳號目前不能把方案用在這個遊戲（方案類型、工作區設定或所在地區的限制）。可以到設定改用 API 金鑰。",plan_scope:"登入時沒有同意讓這個遊戲使用 ChatGPT 方案。請到設定登出後重新登入，在同意畫面允許使用方案。",tpm_exceeded:"這一回合要送出的內容，超過了這把金鑰每分鐘可用的 token 上限，所以模型服務直接拒收。等一分鐘重試也不會過。可以到該服務的後台提高方案上限，或在設定換一家服務。"};
 /* 標記可能含有巢狀的 [[ ]] 或單獨的 ]，所以用括號配對來切，不用正規表示式。沒收尾的標記一律吃到結尾。 */
 function splitTags(raw){
   let out="",i=0;const tags=[];
@@ -1383,7 +1383,7 @@ async function send(content,shown){
     el.remove();busy=false;S.turns.pop();
     const code=e&&e.code;
     if(code==="cancelled"){S.inflight=null;setPhase("input");save();return}
-    offerRetry((ERR[code]||ERR.upstream_error)+(e&&e.message&&["bad_request","upstream_error","network","refused"].includes(code)?"（"+e.message+"）":""),content,["bad_key","no_provider","network","bad_request","tpm_exceeded","signed_out","plan_not_eligible","plan_scope"].includes(code),code==="plan_limit");
+    offerRetry((ERR[code]||ERR.upstream_error)+(e&&e.message&&["bad_request","upstream_error","network","refused"].includes(code)?"（"+e.message+"）":""),content,["bad_key","no_provider","network","bad_request","tpm_exceeded","overloaded","signed_out","plan_not_eligible","plan_scope"].includes(code),code==="plan_limit");
   }
 }
 const USAGE_URL="https://chatgpt.com/settings/usage";
