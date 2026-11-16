@@ -1644,7 +1644,7 @@ document.addEventListener("keydown",e=>{if($("#notes").classList.contains("hidde
 let llmMsg="",llmModels=[];
 function siwcBlock(c){
   const W=LLM.SIWC;
-  if(!W.signedIn)return `<p class="setp">用你的 ChatGPT 帳號登入，守秘人就用你 ChatGPT 方案內含的用量，不需要 API 金鑰。登入憑證只存在這台電腦的啟動器裡，不會交給網頁。能不能用方案額度，依你的 ChatGPT 方案而定。</p>
+  if(!W.signedIn)return `<p class="setp">用你的 ChatGPT 帳號登入，守秘人就用你 ChatGPT 方案內含的用量，不需要 API 金鑰。登入憑證只存在這台電腦的啟動器裡，不會交給網頁。免費方案不能使用；需要付費方案。</p>
   <div class="row"><button type="button" class="gptbtn" data-siwc="login">Continue with ChatGPT</button></div>
   <p class="setp" id="llmMsg" role="status">${esc(llmMsg)}</p>`;
   const opts=W.models.length?W.models:(c.model?[{id:c.model,name:c.model}]:[]);

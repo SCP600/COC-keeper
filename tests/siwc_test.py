@@ -99,7 +99,7 @@ async def main():
         # 拒絕同意、沒給方案權限
         await page.click('[data-siwc="logout"]'); await page.wait_for_timeout(600)
         mock("/__mode?m=deny"); p4 = await login(page, ctx)
-        check("取消了登入" in await p4.inner_text("body"), "使用者在 OpenAI 按取消時顯示說明，不換權杖")
+        check("登入取消了" in await p4.inner_text("body") and "免費方案" in await p4.inner_text("body"), "使用者在 OpenAI 按取消時顯示說明，不換權杖")
         mock("/__mode?m=noplan")
         p5 = await login(page, ctx); body5 = await p5.inner_text("body"); await page.wait_for_timeout(1500)
         check("沒有開啟方案用量" in body5 and "沒有同意讓這個遊戲使用" in await page.inner_text("#setCard") and await page.evaluate("LLM.current()") != "chatgpt", "沒給方案權限時保留登入但不拿來主持，並說明怎麼補")

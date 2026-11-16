@@ -337,8 +337,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if not p:
             return self.send_html(400, page("登入沒有完成", "這個登入連結已失效或不是從遊戲發出的。請回到遊戲重新按 Continue with ChatGPT。", False))
         if q.get("error"):
-            msg = "你取消了登入。" if q["error"] == "access_denied" else "OpenAI 回報錯誤：" + q.get("error", "")
-            return self.send_html(400, page("登入沒有完成", msg + "可以回到遊戲再試一次。", False))
+            msg = ("登入取消了。如果同意畫面寫著「無法取得必要權限」，代表這個 ChatGPT 帳號的方案不能用在這個遊戲（免費方案就是這樣），請回到遊戲改用 API 金鑰。否則可以回到遊戲再試一次。"
+                   if q["error"] == "access_denied" else "OpenAI 回報錯誤：" + q.get("error", "") + "。可以回到遊戲再試一次。")
+            return self.send_html(400, page("登入沒有完成", msg, False))
         d = load()
         issued = q.get("client_id")
         if p["client_id"] == "dynamic_agent_client":
