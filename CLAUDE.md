@@ -4,7 +4,7 @@
 
 最常被忽略的幾條：
 
-- 只改 `src/` 裡的檔案，然後執行 `python3 build.py`。不要直接改 `index.html`。
+- 只改 `src/` 裡的檔案，然後執行 `python3 build.py`。不要直接改 `index.html`。本機啟動器 `play.py` 是另一個獨立檔案，改它之後跑 `tests/siwc_test.py`。
 - 同一個 `index.html` 要同時在 Claude 頁面和 GitHub Pages 運作。只適用其中一個的功能用 `IN_CLAUDE` 分開。
 - 骰子由頁面擲、數值以頁面為準、守秘人手冊的真相不改寫、玩家看不到的東西不能外洩。詳見 `SPEC.md` 第 2 節。
 - 新增標記要同時改 `RULES`、`handleReply`、`TAGNAMES` 和 `SPEC.md` 的標記表。

@@ -16,6 +16,7 @@
 | `src/bible.md`、`src/bible2.md`、`src/bible3.md` | 守秘人手冊（有劇透） |
 | `tests/` | 手冊檢查與劇本冒煙測試，執行時不會印出手冊內容 |
 | `build.py` | 把上面三個檔組成 `index.html` |
+| `play.py` | 本機啟動器：在自己電腦開遊戲並處理 Sign in with ChatGPT。玩家下載 ZIP 後執行，和 `index.html` 放同一個資料夾 |
 
 ## 修改與更新
 

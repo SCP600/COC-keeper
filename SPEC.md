@@ -66,6 +66,7 @@
 COC-keeper/
 ├── index.html          # 成品，由 build.py 產生，不要手動改
 ├── build.py            # 把 template 和各份手冊組成 index.html
+├── play.py             # 本機啟動器：在 127.0.0.1 開遊戲，處理 Sign in with ChatGPT（只用標準函式庫）
 ├── src/
 │   ├── template.html   # 全部的畫面、樣式、程式、主持規則
 │   ├── bible.md        # 《退潮街九號》守秘人手冊（有劇透）
@@ -73,7 +74,9 @@ COC-keeper/
 │   └── bible3.md       # 《繭屋守夜》守秘人手冊（有劇透）
 ├── tests/
 │   ├── check_bible.py      # 手冊的靜態檢查，只印規則名稱和通過與否，不印內容
-│   └── scenario_smoke.py   # 劇本接線的瀏覽器冒煙測試（假的守秘人回應）
+│   ├── scenario_smoke.py   # 劇本接線的瀏覽器冒煙測試（假的守秘人回應）
+│   ├── siwc_mock.py        # 假的 OpenAI（授權伺服器＋Responses API），給下一支用
+│   └── siwc_test.py        # play.py 的端對端測試：登入、推論、更新權杖、錯誤、登出、安全檢查
 ├── README.md           # 給玩家的玩法介紹
 ├── DEVELOPMENT.md      # 建置與部署步驟
 ├── SPEC.md             # 這份文件
@@ -173,10 +176,37 @@ COC-keeper/
 - 回傳 `{text, usage?, model?, tier?}`；失敗丟出 `{code, message}`。
 - `onText` 一律給「目前為止的完整文字」。
 - 錯誤代碼統一為：`cancelled`、`rate_limited`、`refused`、`upstream_error`、`bad_key`、`bad_request`、`network`、`no_provider`、`not_granted`、`session_expired`、`sampling_disabled`、`prompt_too_large`、`tpm_exceeded`。各家的錯誤在轉接器裡翻譯。`tpm_exceeded` 是單一請求就超過金鑰每分鐘 token 上限（HTTP 413，或訊息含 Request too large），重試沒用，所以和 `rate_limited` 分開。
-- 供應商：`artifact`（Claude 內建）、`gemini`、`anthropic`、`groq`、`compat`（OpenAI 相容，預設 OpenRouter）。`groq` 和 `compat` 共用 `oaChat`／`oaModels`（OpenAI 相容的串流與模型清單），只差在預設端點與額外參數。
+- 供應商：`artifact`（Claude 內建）、`chatgpt`（ChatGPT 方案，只在本機啟動器下出現，見 5.5）、`gemini`、`anthropic`、`groq`、`compat`（OpenAI 相容，預設 OpenRouter）。`groq` 和 `compat` 共用 `oaChat`／`oaModels`（OpenAI 相容的串流與模型清單），只差在預設端點與額外參數。
 - Groq：端點 `https://api.groq.com/openai/v1`，預設模型 `openai/gpt-oss-120b`，允許瀏覽器直接呼叫（2026-11 在 GitHub Pages 實測過）。gpt-oss 系列送 `reasoning_effort:"low"`、`include_reasoning:false`，輸出上限用 `max_completion_tokens: 4096`，因為推理也算輸出額度。用量從最後一個區塊的 `x_groq.usage` 讀。模型清單濾掉語音、合成與安全分類模型。**基本方案每分鐘約 8K token**，而本遊戲每回合送出規則加手冊就要 6K 到 8K，幾回合內會撞上限；設定面板有說明，要完整玩需要提高方案上限。
 - 所有 OpenAI 相容的回應都會去掉 `<think>…</think>`，避免推理內容出現在畫面上。
 - 模型名稱是可編輯的文字欄位，並有「列出可用模型」按鈕。不要把特定型號寫死，型號變動很快。
+
+### 5.5 本機啟動器與 Sign in with ChatGPT（`play.py`）
+
+OpenAI 開放給開源工具自助接入的 Sign in with ChatGPT 只支援在使用者自己電腦上執行的程式：授權完成後一定導回 `http://127.0.0.1:<port>/auth/callback`。所以 GitHub Pages 版不能用；網站版要用得另外申請（developers.openai.com/siwc/request-client-id）。
+
+**架構**
+- `play.py` 只綁 `127.0.0.1`，依序試 1455、1456、1457、1458、54321。服務 `index.html` 與 `/siwc/*`。
+- 頁面從 `127.0.0.1` 開啟時呼叫 `/siwc/status`；有回應才把 `chatgpt` 加進模型服務。GitHub Pages 與 Claude 頁面完全不受影響。
+- **權杖不進瀏覽器**：access／refresh／ID token 只存在設定檔（`~/.coc-keeper/chatgpt.json`，Windows 為 `%APPDATA%\coc-keeper\chatgpt.json`，權限 0600）。頁面把請求送到 `/siwc/responses`，由啟動器加上憑證轉給 `https://api.openai.com/v1/responses`，再原樣串流回來。
+- 安全檢查：所有請求的 `Host` 必須是 `127.0.0.1:<port>`（防 DNS rebinding）；POST 的 `Origin` 必須是同一個位址（防其他網站借用登入）。不在終端機印網址。
+
+**登入流程**（照官方開源工具文件）
+- 第一次：`client_id=dynamic_agent_client`＋`agent_name_hint=COC Keeper`；之後用核發的 `oaiapp_…`，帶 `id_token_hint`、`login_hint`，不帶 `agent_name_hint`。
+- 每台電腦一個 `ext_agent_host_id`（`urn:uuid:`），登出、換帳號都不變。
+- PKCE S256、`state`、`nonce` 每次重新產生；scope 為 `openid profile email offline_access resource.invoke chatgpt.tokens.use.direct`，`resource=https://api.openai.com/v1`。
+- ID token 用 OpenAI 公布的 JWKS 驗 RS256 簽章（純 Python 實作），並檢查 iss、aud、exp、nonce。
+- 沒拿到 `chatgpt.tokens.use.direct` 時保留登入、不拿來主持，並提示重新登入補同意。
+- 權杖到期前 2 分鐘或收到 401 時更新；更新時加鎖，避免輪替中的 refresh token 被重複使用。
+- 登出：向 `revocation_endpoint` 撤銷 refresh token，清掉權杖，保留 `client_id` 與 host ID。
+
+**推論請求**：`instructions` 放規則加手冊，`input` 放對話（只有 user／assistant，不能有 system），`store:false`、`stream:true`。啟動器會濾掉這條路不接受的欄位（`temperature`、`max_output_tokens` 等，見官方 preview limitations）。成功以 `response.completed` 為準；用量從其中的 `usage` 讀。
+
+**錯誤代碼**（新增）：`signed_out`、`plan_limit`（主要動作是「管理用量」，連到 chatgpt.com/settings/usage）、`plan_unavailable`、`plan_not_eligible`、`plan_scope`。
+
+**介面**：登入按鈕文字固定為「Continue with ChatGPT」；第一次登入顯示一次說明（「你正在使用 ChatGPT 方案」＋「管理用量」）；使用中時輸入框下方顯示「使用 ChatGPT 方案 · 管理用量」。按鈕目前是純文字，正式對外推廣前要換成 OpenAI 核准的按鈕樣式（含標誌）。
+
+**測試**：`python3 tests/siwc_test.py`（需要 playwright、cryptography）。用假的 OpenAI 跑完 31 項檢查。真的 OpenAI 只能由使用者用自己的帳號驗證。
 
 換模型或調整其他模型的主持表現時，照 `coc-keeper-model-port` skill 的流程做：先建基準、先量再改、解析容錯優先於改提示詞、規則分成共用核心和各模型的補丁。
 
@@ -460,6 +490,7 @@ COC-keeper/
 5. **骰子形狀或數字**：截圖確認朝前那一面的數字等於實際結果。
 
 6. **新增或修改劇本**：跑 `tests/check_bible.py` 和 `tests/scenario_smoke.py`。兩支腳本都不會印出手冊內容。
+7. **改到 `play.py` 或模型轉接層**：跑 `tests/siwc_test.py`。
 
 **開發環境驗證不了的事**，回報時要明說：
 - 守秘人實際的主持品質和語氣。
@@ -527,5 +558,8 @@ COC-keeper/
 | 金額符號跟著年代走 | 原本寫死「$」，日圓劇本顯示不對 |
 | 遊戲中可以從劇本名叫出簡介 | 玩家想回顧引子時原本得回首頁 |
 | 窄螢幕不再藏劇本名 | 原本在平板以下直接隱藏，簡介卡因此沒有入口 |
+| ChatGPT 方案做成本機啟動器 | 官方開源接入只允許導回 127.0.0.1；網站版要申請 |
+| 權杖留在啟動器，不給網頁 | 頁面裡的任何東西都可能被讀到；啟動器有檔案權限保護 |
+| 啟動器只用 Python 標準函式庫 | 玩家不必安裝套件；RS256 驗章用純 Python 實作 |
 | Groq 獨立成一家，不讓玩家自己填相容端點 | 新手不必知道端點網址；也才能針對 gpt-oss 帶推理參數、讀 `x_groq.usage` |
 | 外層網格欄寬用 `minmax(0,1fr)` | 380px 以下的手機，上方列把整個遊戲畫面撐寬，右側被裁掉 |

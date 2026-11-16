@@ -162,6 +162,13 @@ button{cursor:pointer}
 @media (prefers-reduced-motion:reduce){.thinking::after{animation:none;content:"..."}}
 .composer{border-top:1px solid var(--line);padding:12px max(16px,4vw) 16px}
 .composer form{max-width:36em;margin:0 auto;display:flex;gap:10px;align-items:flex-end}
+.plannote{max-width:36em;margin:6px auto 0;font-size:11.5px;color:var(--dim);letter-spacing:.04em}
+.plannote a{color:var(--lamp)}
+.gptbtn{display:inline-flex;align-items:center;justify-content:center;background:#000;color:#fff;border:1px solid #3a3a3a;border-radius:999px;padding:10px 22px;font:500 14.5px/1 var(--sans);cursor:pointer}
+.gptbtn:hover{background:#1c1c1c}
+.siwcwho{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--line)}
+.siwcwho b{font-weight:500}
+.siwcwho .ok{color:var(--lamp);font-size:12.5px}
 #say{flex:1;background:var(--deep);border:1px solid var(--line);padding:10px 14px;resize:none;font-family:var(--hand);font-size:17px;line-height:1.5;min-height:48px;max-height:140px}
 #say:disabled{opacity:.5}
 .opts{max-width:36em;margin:0 auto 10px;display:flex;flex-direction:column;gap:6px}
@@ -229,14 +236,17 @@ details summary{cursor:pointer;color:var(--dim);margin-top:6px}
 .notebtn.new{border-color:var(--tide)}
 .clue[data-clue]{cursor:pointer}
 .clue[data-clue]:hover{border-color:var(--tide)}
-#settings{position:fixed;inset:0;z-index:7;background:rgba(8,14,15,.86);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:70px 16px 40px}
-#settings .card{width:min(460px,100%);background:var(--deep);border:1px solid var(--line);padding:24px 24px 22px;display:flex;flex-direction:column;gap:4px;font-family:var(--sans)}
+#settings,#siwcWelcome{position:fixed;inset:0;z-index:7;background:rgba(8,14,15,.86);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:70px 16px 40px}
+#settings .card,#siwcWelcome .card{width:min(460px,100%);background:var(--deep);border:1px solid var(--line);padding:24px 24px 22px;display:flex;flex-direction:column;gap:4px;font-family:var(--sans)}
+#siwcWelcome{align-items:center}
+#siwcWelcome h2{font-family:var(--serif);font-weight:900;font-size:21px;margin:0 0 6px}
+#siwcWelcome .setp{font-size:13.5px;color:var(--paper)}
 #settings h2{font-family:var(--serif);font-weight:900;font-size:26px;margin:0 0 8px}
 .setrow{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:13px 0;border-bottom:1px solid var(--line)}
 .setrow b{display:block;font-weight:500;font-size:15px;color:var(--paper)}
 .setrow small{display:block;font-size:12.5px;color:var(--dim);line-height:1.5;margin-top:2px}
 .setrow input[type=range]{width:170px;accent-color:var(--lamp)}
-#settings .row{margin-top:18px}
+#settings .row,#siwcWelcome .row{margin-top:18px}
 .seth{font-family:var(--serif);font-weight:900;font-size:19px;margin:26px 0 0}
 .setp{font-size:12.5px;color:var(--dim);line-height:1.6;margin:8px 0 2px}
 .setp.warn{color:var(--paper);border-left:2px solid var(--lamp);padding:6px 0 6px 10px;background:rgba(215,164,69,.06)}
@@ -322,7 +332,7 @@ details summary{cursor:pointer;color:var(--dim);margin-top:6px}
   <div class="eyebrow">克蘇魯的呼喚 · AI 守秘人單人團</div>
   <h1>案件<span>檔案櫃</span></h1>
   <p class="lede">抽一份檔案，建立調查員，然後用你自己的話行動。每份檔案是一個獨立的劇本，進度各自保存。</p>
-  <div class="needkp hidden" id="needKp"><span>這個版本由你自己選的 AI 模型主持。開始之前，請先選一家模型服務並貼上你的 API 金鑰。</span><button class="btn" id="btnNeedKp">設定守秘人模型</button></div>
+  <div class="needkp hidden" id="needKp"><span id="needKpText">這個版本由你自己選的 AI 模型主持。開始之前，請先選一家模型服務並貼上你的 API 金鑰。</span><button class="btn" id="btnNeedKp">設定守秘人模型</button></div>
   <div class="shelf" id="shelf"></div>
   <h2 class="sec">調查員名冊<small>建立過的調查員都收在這裡，依年代分冊。開新劇本時可以直接選用同年代的調查員。</small></h2>
   <div class="shelf" id="roster"></div>
@@ -409,6 +419,7 @@ details summary{cursor:pointer;color:var(--dim);margin-top:6px}
           <textarea id="say" rows="1" placeholder="描述你的調查員要做什麼或說什麼…" aria-label="你的行動"></textarea>
           <button class="btn" id="btnSend">行動</button>
         </form>
+        <div class="plannote hidden" id="planNote">使用 ChatGPT 方案 · <a href="https://chatgpt.com/settings/usage" target="_blank" rel="noopener">管理用量</a></div>
         <div class="endbar hidden" id="endbar">
           <span>故事結束了。</span>
           <button class="btn" id="btnShowEnd">查看結局</button>
@@ -451,6 +462,9 @@ details summary{cursor:pointer;color:var(--dim);margin-top:6px}
 </div></div>
 
 <div id="settings" class="hidden"><div class="card" id="setCard"></div></div>
+<div id="siwcWelcome" class="hidden" role="dialog" aria-modal="true" aria-labelledby="siwcWT"><div class="card"><h2 id="siwcWT">你正在使用 ChatGPT 方案</h2>
+  <p class="setp">守秘人的每一次回應，都會算進你 ChatGPT 方案內含的用量。可以在 ChatGPT 設定的「用量」頁面查看這個遊戲用了多少，也可以替它設每週上限。這個遊戲本身不收任何費用。</p>
+  <div class="row"><a class="btn ghost" href="https://chatgpt.com/settings/usage" target="_blank" rel="noopener">管理用量</a><button type="button" class="btn" id="siwcGotIt">知道了</button></div></div></div>
 
 <div id="sheet" class="hidden"><div class="card" id="sheetCard"></div></div>
 
@@ -781,8 +795,8 @@ const Snd=(()=>{
 const IN_CLAUDE=!!(window.claude&&window.claude.use);
 const LLM=(()=>{
   const KEY="coc-llm-v1";
-  const cfg={provider:"",gemini:{key:"",model:"gemini-flash-latest"},anthropic:{key:"",model:"claude-sonnet-5-5"},groq:{key:"",model:"openai/gpt-oss-120b"},compat:{key:"",model:"",base:"https://openrouter.ai/api/v1"}};
-  try{const s=JSON.parse(localStorage.getItem(KEY)||"{}");for(const k of ["gemini","anthropic","groq","compat"])Object.assign(cfg[k],s[k]||{});cfg.provider=s.provider||""}catch(e){}
+  const cfg={provider:"",gemini:{key:"",model:"gemini-flash-latest"},anthropic:{key:"",model:"claude-sonnet-5-5"},groq:{key:"",model:"openai/gpt-oss-120b"},chatgpt:{model:""},compat:{key:"",model:"",base:"https://openrouter.ai/api/v1"}};
+  try{const s=JSON.parse(localStorage.getItem(KEY)||"{}");for(const k of ["gemini","anthropic","groq","chatgpt","compat"])Object.assign(cfg[k],s[k]||{});cfg.provider=s.provider||""}catch(e){}
   const saveCfg=()=>{try{localStorage.setItem(KEY,JSON.stringify(cfg))}catch(e){}};
   let art=null;
   async function artifact(){if(art)return art;if(!IN_CLAUDE)return null;try{art=await window.claude.use("sample")}catch(e){art=null}return art}
@@ -801,6 +815,15 @@ const LLM=(()=>{
         let j;try{j=JSON.parse(d)}catch(e){continue}onData(j)}}
   }
   const GROQ_BASE="https://api.groq.com/openai/v1";
+  // 本機啟動器（play.py）：只有從 127.0.0.1 開啟、而且 /siwc/status 有回應時才算數。登入憑證留在啟動器，頁面只拿得到狀態
+  const SIWC={launcher:false,signedIn:false,planUsage:false,email:"",welcomed:true,models:[]};
+  async function siwcStatus(){
+    if(IN_CLAUDE||location.hostname!=="127.0.0.1")return SIWC;
+    try{const r=await fetch("/siwc/status",{cache:"no-store"});if(r.ok){const j=await r.json();if(j.launcher)Object.assign(SIWC,j)}}catch(e){}
+    return SIWC}
+  async function siwcFail(res){let j={};try{j=await res.json()}catch(e){}
+    if(j.code==="signed_out")SIWC.signedIn=false;
+    throw {code:j.code||(res.status===401?"signed_out":"upstream_error"),message:String(j.message||"").slice(0,300),status:res.status}}
   // OpenAI 相容的 /chat/completions 串流。部分模型會把思考寫在 <think> 裡，顯示前去掉
   const noThink=t=>t.replace(/<think>[\s\S]*?(<\/think>\s*|$)/g,"");
   async function oaChat(base,c,ms,o,extra){
@@ -867,16 +890,34 @@ const LLM=(()=>{
         if(/gpt-oss/.test(c.model))Object.assign(extra,{reasoning_effort:"low",include_reasoning:false});
         return oaChat(GROQ_BASE,c,ms,o,extra)},
       async models(){return (await oaModels(GROQ_BASE,cfg.groq.key)).filter(id=>!/whisper|orpheus|tts|guard|playai|distil/i.test(id))}},
+    chatgpt:{label:"ChatGPT 方案",
+      async chat(ms,o){
+        const res=await fetch("/siwc/responses",{method:"POST",signal:o.signal,headers:{"content-type":"application/json"},
+          body:JSON.stringify({model:cfg.chatgpt.model,instructions:ms[0].content,input:merge(ms.slice(1)).map(m=>({role:m.role,content:m.content}))})});
+        if(!res.ok)await siwcFail(res);
+        let text="",usage=null,failed=null,done=false,incomplete="";
+        await sse(res,j=>{
+          if(j.type==="response.output_text.delta"&&typeof j.delta==="string"){text+=j.delta;o.onText(text)}
+          else if(j.type==="response.completed"){done=true;const u=j.response&&j.response.usage;if(u)usage={input:u.input_tokens||0,output:u.output_tokens||0}}
+          else if(j.type==="response.incomplete"){incomplete=(j.response&&j.response.incomplete_details&&j.response.incomplete_details.reason)||"incomplete"}
+          else if(j.type==="response.failed"){failed=(j.response&&j.response.error)||{}}
+          else if(j.type==="error"){failed=j.error||j}
+        });
+        if(failed){const c=failed.code||"";
+          throw {code:{subscription_sharing_usage_limit_exceeded:"plan_limit",subscription_sharing_usage_unavailable:"plan_unavailable",subscription_sharing_user_unavailable:"plan_unavailable",subscription_sharing_user_not_eligible:"plan_not_eligible",subscription_sharing_invalid_user:"signed_out"}[c]||"upstream_error",message:String(failed.message||c).slice(0,300)}}
+        if(!done&&!text)throw {code:"upstream_error",message:incomplete||"回應在完成前中斷了"};
+        return {text,usage,model:cfg.chatgpt.model}},
+      async models(){const r=await fetch("/siwc/models",{cache:"no-store"});if(!r.ok)await siwcFail(r);const j=await r.json();SIWC.models=j.models||[];return SIWC.models.map(m=>m.id)}},
     compat:{label:"OpenAI 相容端點（OpenRouter 等）",keyHint:"該服務的 API 金鑰",
       chat:(ms,o)=>oaChat(cfg.compat.base,cfg.compat,ms,o,{max_tokens:2048}),
       models:()=>oaModels(cfg.compat.base,cfg.compat.key)}
   };
-  const usable=id=>id==="artifact"?IN_CLAUDE:!!(cfg[id]&&cfg[id].key&&cfg[id].model);
-  function current(){if(IN_CLAUDE)return "artifact";if(cfg.provider&&usable(cfg.provider))return cfg.provider;return ["gemini","anthropic","groq","compat"].find(usable)||""}
+  const usable=id=>id==="artifact"?IN_CLAUDE:id==="chatgpt"?SIWC.launcher&&SIWC.signedIn&&SIWC.planUsage&&!!cfg.chatgpt.model:!!(cfg[id]&&cfg[id].key&&cfg[id].model);
+  function current(){if(IN_CLAUDE)return "artifact";if(cfg.provider&&usable(cfg.provider))return cfg.provider;return ["chatgpt","gemini","anthropic","groq","compat"].find(usable)||""}
   const norm=e=>{if(e&&e.code)return e;if(e&&e.name==="AbortError")return {code:"cancelled"};if(e instanceof TypeError)return {code:"network",message:String(e.message||"")};return {code:"upstream_error",message:String(e&&e.message||e)}};
   return {
-    cfg,P,current,usable,
-    ids:()=>IN_CLAUDE?["artifact"]:["gemini","anthropic","groq","compat"],
+    cfg,P,current,usable,SIWC,siwcStatus,
+    ids:()=>IN_CLAUDE?["artifact"]:SIWC.launcher?["chatgpt","gemini","anthropic","groq","compat"]:["gemini","anthropic","groq","compat"],
     label(){const id=current();return id?P[id].label:"尚未設定"},
     async ready(){const id=current();if(id==="artifact")return !!(await artifact());return !!id},
     async chat(ms,o){const id=current();if(!id)throw {code:"no_provider"};
@@ -1244,7 +1285,7 @@ function setPhase(ph){
 }
 
 /* ---------- 與守秘人對話 ---------- */
-const ERR={not_granted:"這個頁面沒有獲得使用 Claude 的許可，守秘人無法主持。重新整理頁面後可以再同意一次。",sampling_disabled:"這個帳號目前無法在頁面中使用 Claude。",rate_limited:"用量達到上限或呼叫太頻繁，請稍等幾分鐘再按「重試」。",session_expired:"登入已過期，請重新登入 Claude 後再試。",refused:"守秘人拒絕了這段內容。請換個方式描述行動。",prompt_too_large:"對話太長了，無法再送出。",upstream_error:"連線中斷了。請按「重試」。",bad_key:"API 金鑰無效，或這把金鑰沒有使用這個模型的權限。請到設定檢查。",no_provider:"還沒有設定守秘人要用的模型。",network:"連不上模型服務。請檢查網路；如果用的是相容端點，它可能不允許從瀏覽器直接連線。",bad_request:"模型服務拒絕了這個請求，通常是模型名稱不對。",tpm_exceeded:"這一回合要送出的內容，超過了這把金鑰每分鐘可用的 token 上限，所以模型服務直接拒收。等一分鐘重試也不會過。可以到該服務的後台提高方案上限，或在設定換一家服務。"};
+const ERR={not_granted:"這個頁面沒有獲得使用 Claude 的許可，守秘人無法主持。重新整理頁面後可以再同意一次。",sampling_disabled:"這個帳號目前無法在頁面中使用 Claude。",rate_limited:"用量達到上限或呼叫太頻繁，請稍等幾分鐘再按「重試」。",session_expired:"登入已過期，請重新登入 Claude 後再試。",refused:"守秘人拒絕了這段內容。請換個方式描述行動。",prompt_too_large:"對話太長了，無法再送出。",upstream_error:"連線中斷了。請按「重試」。",bad_key:"API 金鑰無效，或這把金鑰沒有使用這個模型的權限。請到設定檢查。",no_provider:"還沒有設定守秘人要用的模型。",network:"連不上模型服務。請檢查網路；如果用的是相容端點，它可能不允許從瀏覽器直接連線。",bad_request:"模型服務拒絕了這個請求，通常是模型名稱不對。",signed_out:"ChatGPT 的登入已失效。請到設定按 Continue with ChatGPT 重新登入。",plan_limit:"ChatGPT 方案的用量到上限了。可能是整個方案的額度，也可能是你替這個遊戲設的上限。到 ChatGPT 設定的「用量」頁面查看。",plan_unavailable:"ChatGPT 方案暫時無法使用，請過幾分鐘再按「重試」。",plan_not_eligible:"這個 ChatGPT 帳號目前不能把方案用在這個遊戲（方案類型、工作區設定或所在地區的限制）。可以到設定改用 API 金鑰。",plan_scope:"登入時沒有同意讓這個遊戲使用 ChatGPT 方案。請到設定登出後重新登入，在同意畫面允許使用方案。",tpm_exceeded:"這一回合要送出的內容，超過了這把金鑰每分鐘可用的 token 上限，所以模型服務直接拒收。等一分鐘重試也不會過。可以到該服務的後台提高方案上限，或在設定換一家服務。"};
 /* 標記可能含有巢狀的 [[ ]] 或單獨的 ]，所以用括號配對來切，不用正規表示式。沒收尾的標記一律吃到結尾。 */
 function splitTags(raw){
   let out="",i=0;const tags=[];
@@ -1334,16 +1375,18 @@ async function send(content,shown){
     el.remove();busy=false;S.turns.pop();
     const code=e&&e.code;
     if(code==="cancelled"){S.inflight=null;setPhase("input");save();return}
-    offerRetry((ERR[code]||ERR.upstream_error)+(e&&e.message&&["bad_request","upstream_error","network","refused"].includes(code)?"（"+e.message+"）":""),content,["bad_key","no_provider","network","bad_request","tpm_exceeded"].includes(code));
+    offerRetry((ERR[code]||ERR.upstream_error)+(e&&e.message&&["bad_request","upstream_error","network","refused"].includes(code)?"（"+e.message+"）":""),content,["bad_key","no_provider","network","bad_request","tpm_exceeded","signed_out","plan_not_eligible","plan_scope"].includes(code),code==="plan_limit");
   }
 }
-function offerRetry(msg,content,cfgBtn){
+const USAGE_URL="https://chatgpt.com/settings/usage";
+function offerRetry(msg,content,cfgBtn,usageBtn){
   S.inflight=content;save();
   const d=document.createElement("div");d.className="rollcard";
   d.innerHTML=`<div><b>守秘人沒有回應</b><small>${esc(msg)}</small></div>`;
   const b=document.createElement("button");b.className="btn";b.textContent="重試";
   b.onclick=()=>{d.remove();send(content,null)};
-  if(cfgBtn&&!IN_CLAUDE){const row=document.createElement("div");row.className="row";const c=document.createElement("button");c.className="btn ghost";c.textContent="開啟設定";c.onclick=openSettings;row.append(c,b);d.appendChild(row)}else d.appendChild(b);
+  if(usageBtn){const row=document.createElement("div");row.className="row";const a=document.createElement("a");a.className="btn";a.href=USAGE_URL;a.target="_blank";a.rel="noopener";a.textContent="管理用量";b.className="btn ghost";row.append(a,b);d.appendChild(row)}
+  else if(cfgBtn&&!IN_CLAUDE){const row=document.createElement("div");row.className="row";const c=document.createElement("button");c.className="btn ghost";c.textContent="開啟設定";c.onclick=openSettings;row.append(c,b);d.appendChild(row)}else d.appendChild(b);
   $("#log").appendChild(d);scrollDown();
 }
 
@@ -1506,7 +1549,7 @@ function reveal(){
 
 /* ---------- 啟動與事件 ---------- */
 async function enterGame(fresh){
-  if(!S.sid)S.sid="ebb9";useScenario(S.sid);migrate();show("game");Snd.unlock();if(!S.end)Snd.amb(S.amb||SC.amb0);drawLog();drawSide();setPhase("kp");
+  if(!S.sid)S.sid="ebb9";useScenario(S.sid);migrate();show("game");drawPlanNote();Snd.unlock();if(!S.end)Snd.amb(S.amb||SC.amb0);drawLog();drawSide();setPhase("kp");
   if(!(await LLM.ready())){
     const d=document.createElement("div");d.className="rollcard";const row=document.createElement("div");row.className="row";
     if(IN_CLAUDE)d.innerHTML=`<div><b>連不上守秘人</b><small>這個頁面要在登入 Claude 的狀態下、從 Claude 裡面開啟，守秘人才能主持。請依序試試：<br>1. 先到 claude.ai 登入自己的帳號，再重新點開連結。<br>2. 如果是在手機 App 裡開的，改用電腦瀏覽器，或先把 App 更新到最新版。<br>3. 重新整理頁面，等十秒左右再按「重試」。<br>你的調查員已經存好了，不會遺失。</small></div>`;
@@ -1521,7 +1564,8 @@ async function enterGame(fresh){
 }
 function drawShelf(){
   $("#needKp").classList.toggle("hidden",IN_CLAUDE||!!LLM.current());
-  $("#titleNote").textContent=IN_CLAUDE?"守秘人由 Claude 即時主持，會使用你自己的 Claude 用量，第一次行動時會請你同意。進度只存在這個瀏覽器裡。一場約 60 到 90 分鐘。":"守秘人由你選的 AI 模型主持（目前："+LLM.label()+"），費用由你自己的 API 金鑰支付。進度和金鑰都只存在這個瀏覽器裡。一場約 60 到 90 分鐘。";
+  $("#needKpText").textContent=LLM.SIWC.launcher?"開始之前，請先到設定用你的 ChatGPT 帳號登入（Continue with ChatGPT），或改用 API 金鑰。":"這個版本由你自己選的 AI 模型主持。開始之前，請先選一家模型服務並貼上你的 API 金鑰。";
+  $("#titleNote").textContent=IN_CLAUDE?"守秘人由 Claude 即時主持，會使用你自己的 Claude 用量，第一次行動時會請你同意。進度只存在這個瀏覽器裡。一場約 60 到 90 分鐘。":(LLM.current()==="chatgpt"?"守秘人由 ChatGPT 主持，使用你 ChatGPT 方案內含的用量（"+(LLM.SIWC.email||"已登入")+"）。進度只存在這個瀏覽器裡，登入憑證在這台電腦的啟動器裡。":"守秘人由你選的 AI 模型主持（目前："+LLM.label()+"），費用由你自己的 API 金鑰支付。進度和金鑰都只存在這個瀏覽器裡。")+"一場約 60 到 90 分鐘。";
   for(const s of SCENARIOS){const sv=loadSave(s.id);if(sv&&!sv.pc.rid){sv.pc.rid=addToRoster(sv.pc,s.eraKey);try{localStorage.setItem(saveKey(s.id),JSON.stringify(sv))}catch(e){}}}
   drawRoster();
   $("#shelf").innerHTML=SCENARIOS.map(s=>{const sv=loadSave(s.id);
@@ -1598,18 +1642,47 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape")closeBrief()});
 document.addEventListener("keydown",e=>{if($("#notes").classList.contains("hidden"))return;
   if(e.key==="Escape")closeNotes();else if(e.key==="ArrowLeft"&&noteIdx>0){noteIdx--;drawNote(-1)}else if(e.key==="ArrowRight"&&S&&noteIdx<Object.keys(S.clues).length-1){noteIdx++;drawNote(1)}});
 let llmMsg="",llmModels=[];
+function siwcBlock(c){
+  const W=LLM.SIWC;
+  if(!W.signedIn)return `<p class="setp">用你的 ChatGPT 帳號登入，守秘人就用你 ChatGPT 方案內含的用量，不需要 API 金鑰。登入憑證只存在這台電腦的啟動器裡，不會交給網頁。能不能用方案額度，依你的 ChatGPT 方案而定。</p>
+  <div class="row"><button type="button" class="gptbtn" data-siwc="login">Continue with ChatGPT</button></div>
+  <p class="setp" id="llmMsg" role="status">${esc(llmMsg)}</p>`;
+  const opts=W.models.length?W.models:(c.model?[{id:c.model,name:c.model}]:[]);
+  return `<div class="siwcwho"><div><b>${esc(W.email||"已登入")}</b><br><span class="ok">${W.planUsage?"使用 ChatGPT 方案":"沒有開啟方案用量"}</span></div>
+  <div class="row" style="margin:0"><a class="btn ghost" href="https://chatgpt.com/settings/usage" target="_blank" rel="noopener">管理用量</a><button type="button" class="btn ghost" data-siwc="logout">登出</button></div></div>
+  ${W.planUsage?"":`<p class="setp warn">登入時沒有同意讓這個遊戲使用你的 ChatGPT 方案。請登出後重新登入，在同意畫面允許使用方案。</p>`}
+  <div class="setrow col"><label for="siwcModel"><b>模型</b><small>這個帳號可用的模型。換帳號後會重新讀取。</small></label>
+  <select id="siwcModel" class="field wide">${opts.length?opts.map(m=>`<option value="${esc(m.id)}"${m.id===c.model?" selected":""}>${esc(m.name)}</option>`).join(""):`<option value="">讀取中…</option>`}</select></div>
+  <div class="row"><button type="button" class="btn ghost" data-llm="test">測試連線</button><button type="button" class="btn ghost" data-siwc="models">重新讀取模型</button></div>
+  <p class="setp" id="llmMsg" role="status">${esc(llmMsg)}</p>`;
+}
+async function siwcLoadModels(){
+  try{const ids=await LLM.models("chatgpt");if(!ids.includes(LLM.cfg.chatgpt.model)&&ids.length)LLM.set("chatgpt","model",ids[0])}
+  catch(e){llmMsg="讀取模型失敗："+(ERR[e.code]||ERR.upstream_error)+(e.message?"（"+e.message+"）":"")}
+}
+let siwcPoll=0;
+async function siwcAfterSignIn(){
+  await LLM.siwcStatus();
+  if(LLM.SIWC.signedIn){clearInterval(siwcPoll);siwcPoll=0;llmMsg="";if(LLM.SIWC.planUsage)await siwcLoadModels();
+    if(!$("#settings").classList.contains("hidden"))drawSettings();drawPlanNote();if(!S)drawShelf();
+    if(LLM.SIWC.planUsage&&!LLM.SIWC.welcomed)$("#siwcWelcome").classList.remove("hidden")}
+}
+window.addEventListener("message",e=>{if(e.origin===location.origin&&e.data==="siwc-done")siwcAfterSignIn()});
+function drawPlanNote(){$("#planNote").classList.toggle("hidden",LLM.current()!=="chatgpt")}
+$("#siwcGotIt").onclick=()=>{$("#siwcWelcome").classList.add("hidden");LLM.SIWC.welcomed=true;fetch("/siwc/welcomed",{method:"POST"}).catch(()=>{})};
 function llmSection(){
   if(IN_CLAUDE)return "";
-  const cur=LLM.current(),sel=LLM.cfg.provider||cur||"gemini",c=LLM.cfg[sel],p=LLM.P[sel];
+  const cur=LLM.current(),ids=LLM.ids(),sel=ids.includes(LLM.cfg.provider)?LLM.cfg.provider:(cur||ids[0]),c=LLM.cfg[sel],p=LLM.P[sel];
   return `<h3 class="seth">守秘人模型</h3>
-  <p class="setp">這個版本由你自己選的 AI 模型主持，費用由你的 API 金鑰支付。金鑰只存在這個瀏覽器，只會送給你選的那家服務。建議在該服務的後台替這把金鑰設用量上限。</p>
+  <p class="setp">${sel==="chatgpt"?"這個版本由你自己選的 AI 模型主持。選「ChatGPT 方案」時用的是你 ChatGPT 方案內含的用量；選其他服務時，費用由你的 API 金鑰支付。":"這個版本由你自己選的 AI 模型主持，費用由你的 API 金鑰支付。金鑰只存在這個瀏覽器，只會送給你選的那家服務。建議在該服務的後台替這把金鑰設用量上限。"}</p>
   <div class="setrow"><div><b>模型服務</b></div><select id="llmProv" aria-label="模型服務">${LLM.ids().map(id=>`<option value="${id}"${id===sel?" selected":""}>${LLM.P[id].label}</option>`).join("")}</select></div>
+  ${sel==="chatgpt"?siwcBlock(c):""}
   ${sel==="groq"?`<p class="setp warn">Groq 的回應很快，但基本方案每分鐘只能用約 8K token。這個遊戲每回合會送出規則、整份守秘人手冊和最近的對話，開場估計就要 6K 到 8K，之後每回合再多幾百，通常幾回合內就會超過上限而被拒收。想完整玩一場，需要在 Groq 後台把方案的上限調高。</p>`:""}
   ${sel==="compat"?`<div class="setrow col"><label for="llmBase"><b>端點網址</b><small>相容 OpenAI 的 /chat/completions 介面。官方 OpenAI 端點不接受瀏覽器直接連線。</small></label><input class="field wide" id="llmBase" value="${esc(c.base)}" spellcheck="false" autocomplete="off"></div>`:""}
-  <div class="setrow col"><label for="llmKey"><b>API 金鑰</b><small>${p.keyHint}</small></label><input class="field wide" id="llmKey" type="password" value="${esc(c.key)}" autocomplete="off" spellcheck="false" placeholder="貼上金鑰"></div>
+  ${sel==="chatgpt"?"":`<div class="setrow col"><label for="llmKey"><b>API 金鑰</b><small>${p.keyHint}</small></label><input class="field wide" id="llmKey" type="password" value="${esc(c.key)}" autocomplete="off" spellcheck="false" placeholder="貼上金鑰"></div>
   <div class="setrow col"><label for="llmModel"><b>模型名稱</b><small>可以直接改。按「列出可用模型」會用你的金鑰查這家目前有哪些。</small></label><input class="field wide" id="llmModel" value="${esc(c.model)}" list="llmList" spellcheck="false" autocomplete="off" placeholder="模型的識別字串"><datalist id="llmList">${llmModels.map(m=>`<option value="${esc(m)}">`).join("")}</datalist></div>
   <div class="row"><button type="button" class="btn ghost" data-llm="test">測試連線</button><button type="button" class="btn ghost" data-llm="list">列出可用模型</button></div>
-  <p class="setp" id="llmMsg" role="status">${esc(llmMsg)}</p>`;
+  <p class="setp" id="llmMsg" role="status">${esc(llmMsg)}</p>`}`;
 }
 function drawSettings(){
   const row=(key,on,title,desc)=>`<div class="setrow"><div><b>${title}</b><small>${desc}</small></div><button type="button" class="sw" role="switch" aria-checked="${on}" data-set="${key}" aria-label="${title}"><i></i></button></div>`;
@@ -1623,16 +1696,25 @@ function drawSettings(){
   <div class="row"><button type="button" class="btn" id="setClose">完成</button></div>`;
 }
 function openSettings(){llmMsg="";drawSettings();$("#settings").classList.remove("hidden");$("#settings").scrollTop=0}
-function closeSettings(){$("#settings").classList.add("hidden");if(!S)drawShelf()}
+function closeSettings(){$("#settings").classList.add("hidden");clearInterval(siwcPoll);siwcPoll=0;drawPlanNote();if(!S)drawShelf()}
 const llmSel=()=>$("#llmProv")?$("#llmProv").value:"";
 $("#btnSet").onclick=openSettings;
 $("#btnSetHome").onclick=openSettings;
 $("#btnNeedKp").onclick=openSettings;
 $("#settings").onclick=async e=>{
   if(e.target.id==="settings"||e.target.id==="setClose"){closeSettings();return}
+  const w=e.target.closest("[data-siwc]");
+  if(w){const say=m=>{llmMsg=m;const el=$("#llmMsg");if(el)el.textContent=m};const act=w.dataset.siwc;
+    if(act==="login"){LLM.set("provider","chatgpt");const win=window.open("/siwc/login","_blank");if(!win){location.href="/siwc/login";return}
+      say("請在新開的分頁登入 ChatGPT，完成後回到這裡。");clearInterval(siwcPoll);let n=0;siwcPoll=setInterval(()=>{if(++n>150){clearInterval(siwcPoll);siwcPoll=0;return}siwcAfterSignIn()},2000)}
+    else if(act==="logout"){w.disabled=true;try{const r=await fetch("/siwc/logout",{method:"POST"});const j=await r.json();await LLM.siwcStatus();LLM.SIWC.models=[];
+      llmMsg=j.revoked?"已登出，這台電腦上的 ChatGPT 登入已撤銷。":"已在這台電腦登出，但沒能確認 OpenAI 那邊已撤銷。可以到 ChatGPT 設定的「已連結的應用程式」中斷連結。"}catch(err){llmMsg="登出失敗，請確認啟動器還開著。"}
+      drawSettings();drawPlanNote()}
+    else if(act==="models"){w.disabled=true;say("讀取中…");llmMsg="";await siwcLoadModels();drawSettings()}
+    return}
   const l=e.target.closest("[data-llm]");
   if(l){const id=llmSel(),say=m=>{llmMsg=m;const el=$("#llmMsg");if(el)el.textContent=m};
-    if(!LLM.cfg[id].key){say("請先貼上 API 金鑰。");return}
+    if(id!=="chatgpt"&&!LLM.cfg[id].key){say("請先貼上 API 金鑰。");return}
     l.disabled=true;
     try{
       if(l.dataset.llm==="list"){say("查詢中…");llmModels=await LLM.models(id);llmMsg=llmModels.length?`找到 ${llmModels.length} 個模型，點模型名稱欄位可以挑選。`:"這把金鑰沒有列出任何模型。";drawSettings()}
@@ -1650,7 +1732,8 @@ $("#settings").onclick=async e=>{
 };
 $("#settings").onchange=e=>{
   const id=e.target.id;
-  if(id==="llmProv"){LLM.set("provider",e.target.value);llmModels=[];llmMsg="";drawSettings()}
+  if(id==="llmProv"){LLM.set("provider",e.target.value);llmModels=[];llmMsg="";drawSettings();if(e.target.value==="chatgpt"&&LLM.SIWC.planUsage&&!LLM.SIWC.models.length)siwcLoadModels().then(drawSettings);drawPlanNote()}
+  else if(id==="siwcModel"){LLM.set("chatgpt","model",e.target.value);drawPlanNote()}
   else if(id==="llmKey")LLM.set(llmSel(),"key",e.target.value);
   else if(id==="llmModel")LLM.set(llmSel(),"model",e.target.value);
   else if(id==="llmBase")LLM.set(llmSel(),"base",e.target.value);
@@ -1668,6 +1751,10 @@ $("#btnAgain2").onclick=reset;
 const hot=window.claude&&window.claude.hot;
 if(hot&&hot.snapshot)hot.snapshot(()=>S&&!busy?S:{});
 if(hot&&hot.ready)hot.ready(start);else start((hot&&hot.data)||{});
+// 從本機啟動器開啟時，讀登入狀態後再更新首頁與輸入框下的方案提示
+LLM.siwcStatus().then(async W=>{if(!W.launcher)return;if(!LLM.cfg.provider)LLM.set("provider","chatgpt");
+  if(W.signedIn&&W.planUsage&&!LLM.cfg.chatgpt.model)await siwcLoadModels();if(!S)drawShelf();drawPlanNote();
+  if(W.signedIn&&W.planUsage&&!W.welcomed)$("#siwcWelcome").classList.remove("hidden")});
 </script>
 </body>
 </html>
