@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """劇本接線的瀏覽器冒煙測試（假的守秘人回應）。
 用法：python3 build.py && python3 tests/scenario_smoke.py <劇本 id> [截圖資料夾]
+私人劇本：python3 build.py --private && SMOKE_PAGE=private/index.html python3 tests/scenario_smoke.py <劇本 id>
 需要 playwright（pip install playwright && playwright install chromium）。
 只檢查「接得進去、跑得起來」，不印手冊內容。主持品質、聲音、動畫要真人試玩。"""
-import asyncio, subprocess, sys, time, pathlib
+import asyncio, os, subprocess, sys, time, pathlib
 from playwright.async_api import async_playwright
 root = pathlib.Path(__file__).resolve().parent.parent
 sid = sys.argv[1]; shots = pathlib.Path(sys.argv[2]) if len(sys.argv) > 2 else None
@@ -22,7 +23,7 @@ async def main():
         b = await p.chromium.launch(); pg = await b.new_page(viewport={"width": 1280, "height": 900})
         errs = []; pg.on("pageerror", lambda e: errs.append(str(e)))
         await pg.route("**/three.min.js", lambda r: r.fulfill(body="", content_type="text/javascript"))
-        await pg.add_init_script(INIT); await pg.goto(f"http://localhost:{PORT}/index.html"); await pg.wait_for_selector("#shelf .folder")
+        await pg.add_init_script(INIT); await pg.goto(f"http://localhost:{PORT}/" + os.environ.get("SMOKE_PAGE", "index.html")); await pg.wait_for_selector("#shelf .folder")
         check(await pg.locator(f'[data-new="{sid}"]').count() == 1, "檔案櫃有這個劇本的資料夾")
         if shots: await pg.screenshot(path=str(shots / "shelf.png"), full_page=True)
         await pg.click(f'[data-new="{sid}"]')

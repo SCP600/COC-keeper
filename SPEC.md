@@ -322,6 +322,23 @@ OpenAI 開放給開源工具自助接入的 Sign in with ChatGPT 只支援在使
 
 ---
 
+### 7.5 私人劇本（不公開）
+
+非原創、或沒有確認散布授權的劇本（例如改編自他人作品），只能做成私人版，不能進公開的 repo 與 GitHub Pages。
+
+- 檔案放在 `private/`（已列入 `.gitignore`）：`private/scenarios.js` 放一筆或多筆 `SCENARIOS` 設定（逗號分隔、不含外層中括號），手冊放 `private/<檔名>.md`，設定裡的 `bible` 寫成 `"__PBIBLE:<檔名>.md__"`。
+- `python3 build.py --private` 產生 `private/index.html`：公開版的全部內容，加上私人劇本（插在 `SCENARIOS` 結尾的 `/*__PRIVATE_SCENARIOS__*/` 插槽）。一般的 `python3 build.py` 會把插槽清空。
+- 測試：`python3 tests/check_bible.py private/<檔名>.md`、`SMOKE_PAGE=private/index.html python3 tests/scenario_smoke.py <id>`。
+- 交付：把 `private/index.html` 傳給使用者，或發布成另一個私人的 Claude 頁面。不要發布到公開的 Claude 頁面。
+- 備份：`private/` 不在 git 裡，開發環境重置就會消失。手冊與設定另存到 Drive（檔名標「有劇透」）。
+- 選填欄位：`credit`（原作署名，顯示在檔案櫃與簡介卡）、`sym`（金額符號，覆寫年代的設定）。
+
+| id | 標題 | 來源 | 年代與地點 | 類型 | 期限 |
+|---|---|---|---|---|---|
+| `tokoyami` | 常闇之箱 | 86式『常闇の箱』（中譯 lordcj、7 版改編 zuo死菌），單人版改寫 | 2013 年日本私鐵 | 封閉空間、限時逃脫 | 第1天 01:30（50 分鐘） |
+
+`tokoyami` 的手冊只有一位有名字的 NPC，`check_bible.py` 的「NPC 五到八個」會不過：這是照原作的設計，不另外補人。
+
 ## 8. 車卡規格
 
 網頁版是簡化過的七版車卡。完整版的流程在 `coc-investigator` skill。
@@ -562,6 +579,7 @@ OpenAI 開放給開源工具自助接入的 Sign in with ChatGPT 只支援在使
 | 金額符號跟著年代走 | 原本寫死「$」，日圓劇本顯示不對 |
 | 遊戲中可以從劇本名叫出簡介 | 玩家想回顧引子時原本得回首頁 |
 | 窄螢幕不再藏劇本名 | 原本在平板以下直接隱藏，簡介卡因此沒有入口 |
+| 私人劇本走 `--private` 建置，不進 repo | 改編他人作品只供自己玩；公開版保持全原創 |
 | Gemini 預設低思考量 | 預設的動態思考讓一回合要等約 4 分鐘；守秘人的回應不需要長推理 |
 | ChatGPT 方案做成本機啟動器 | 官方開源接入只允許導回 127.0.0.1；網站版要申請 |
 | 權杖留在啟動器，不給網頁 | 頁面裡的任何東西都可能被讀到；啟動器有檔案權限保護 |
